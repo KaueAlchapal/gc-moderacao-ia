@@ -11,8 +11,18 @@ st.set_page_config(
 )
 
 # Título do Sistema
-st.title("Zeus - A IA Moderadora de CX")
-st.subheader("Assistente de Análise de Punições - Gamers Club")
+# --- CABEÇALHO COM LOGO E TÍTULO ---
+# Criamos duas colunas. A primeira tem peso 1 (menor) e a segunda tem peso 4 (maior)
+col1, col2 = st.columns([1, 4]) 
+
+with col1:
+    # Mostra a imagem. Se o seu arquivo tiver outro nome, mude o "logo.png" abaixo.
+    # O width=100 controla o tamanho da logo, você pode aumentar ou diminuir.
+    st.image("logo.png", width=100)
+
+with col2:
+    st.title("Zeus - A IA Moderadora de CX")
+    st.subheader("Assistente de Análise de Punições - Gamers Club")
 st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log e verifique a recomendação baseada no nosso histórico de moderação.")
 
 # --- CARREGAMENTO DE DADOS (BANCO DE DADOS ORGÂNICO) ---

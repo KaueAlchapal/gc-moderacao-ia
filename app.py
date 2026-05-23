@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # Título do Sistema
-st.title("🛡️ GC Moderator AI")
+st.title("Zeus - A IA Moderadora de CX")
 st.subheader("Assistente de Análise de Punições - Gamers Club")
 st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log e verifique a recomendação baseada no nosso histórico de moderação.")
 

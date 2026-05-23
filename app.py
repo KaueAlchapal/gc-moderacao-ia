@@ -23,7 +23,7 @@ with col1:
 with col2:
     st.title("Zeus - A IA Moderadora de CX")
     st.subheader("Assistente de Análise de Punições - Gamers Club")
-st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log e verifique a recomendação baseada no nosso histórico de moderação.")
+st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log (chat ou voice escrito) e verifique a recomendação baseada no nosso histórico de moderação.")
 
 # --- CARREGAMENTO DE DADOS (BANCO DE DADOS ORGÂNICO) ---
 CSV_FILE = "casos.csv"
@@ -79,7 +79,7 @@ O jogador é assinante da plataforma? {status_atual_assinante}
 
 --- INSTRUÇÃO DE FORMATAÇÃO DA RESPOSTA ---
 Responda de forma extremamente curta, direta e objetiva (máximo 3 linhas). Siga estritamente o modelo de resposta abaixo:
-Recomendo **[PUNIÇÃO]** pois [JUSTIFICATIVA DIRETA EM ATÉ DUAS LINHAS EXPLICANDO O MOTIVO].
+Recomendo **[PUNIÇÃO]** pois [JUSTIFICATIVA DIRETA EM ATÉ DUAS LINHAS EXPLICANDO O MOTIVO].Se achar necessário, poderá dar 2 opções de punições
 """
     return prompt
 

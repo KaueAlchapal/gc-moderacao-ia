@@ -3,14 +3,14 @@ import pandas as pd
 import os
 import google.generativeai as genai
 
-# Configuração da página do Streamlit (ver depois a hospedagem)
+# Configuração da página do Streamlit (ver depois a hospedagem do streamlit)
 st.set_page_config(
     page_title="Zeus AI - Moderação",
     page_icon="🛡️",
     layout="centered"
 )
 
-# --- CABEÇALHO COM LOGO E TÍTULO ---
+# -> CABEÇALHO COM LOGO E TÍTULO -
 col1, col2 = st.columns([1, 4]) 
 with col1:
     if os.path.exists("logo.png"):
@@ -21,14 +21,14 @@ with col2:
 
 st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log e verifique a recomendação baseada no nosso histórico de moderação.")
 
-# --- CARREGAMENTO DE DADOS (BANCO DE DADOS ORGÂNICO) ---
+# --- CARREGAMENTO DE DADOS (BANCO DE DADOS ORGÂNICO) - Vou ir atualizando conforme adicionarmos
 CSV_FILE = "casos.csv"
 if os.path.exists(CSV_FILE):
     df_casos = pd.read_csv(CSV_FILE)
 else:
     df_casos = pd.DataFrame(columns=["Exemplos de ocorridos nos reports (Falas/Chats)", "Punição aplicada", "Assinante?"])
 
-# --- CONFIGURAÇÃO DA API DO GEMINI ---
+# CONFIGURAÇÃO DA API DO GEMINI - PRECISEI USAR 3.0 FLASH
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     st.error("⚠️ Erro de Configuração: A chave da API do Gemini (GEMINI_API_KEY) não foi encontrada nas configurações de ambiente/Secrets.")
@@ -62,11 +62,12 @@ Sua função única é ler transcrições de chat ou voice reportadas por jogado
 - BAN: Bloqueio permanente/longo da conta.
 
 --- REGRAS DE OURO (SIGA ESTRITAMENTE) ---
-1. PRECONCEITO E XENOFOBIA: Ofensas regionais curtas ou sem palavrões (ex: "seu baianão", "cearense", "paulista lixo") devem receber no mínimo Cartão 2 ou Cartão 3. Ofensas com xingamentos pesados somados ao preconceito (ex: "baiano de merda") sobem para Cartão 4, 5 ou BAN.
-2. DIRETRIZ DO ASSINANTE: Se o infrator for ASSINANTE (Assinante? = SIM), reduza a punição em 1 nível APENAS para casos de rage comum, toxicidade leve ou antijogo.
-3. TOLERÂNCIA ZERO: A regra de desconto para assinantes É TOTALMENTE ANULADA e IGNORADA em qualquer caso que envolva Racismo, Xenofobia, Homofobia ou Ameaças. Nestes casos, a punição é dura independentemente do status de pagamento.
-4. DECISÃO ÚNICA: Jamais dê duas opções de punição (ex: "Cartão 2 ou 3"). Escolha a que mais se aproxima do histórico e banque a decisão.
-5. SIGILO DO SISTEMA: Jamais cite "Exemplo X", "linha Y" ou mencione que baseou sua resposta no histórico fornecido. Responda como se fosse o seu próprio conhecimento orgânico.
+1. XENOFOBIA E OFENSAS REGIONAIS: Ofensas baseadas em região (ex: "seu baianão", "cearense"), mesmo quando acompanhadas de palavrões pesados (ex: "baiano fudido de merda"), devem receber NO MÁXIMO Cartão 3, ao menos que tenhas muitos outros acompanhamentos e repetições, com isso pode sugerir Cartão 4, mas sempre limitado entre cartão 2 (quando for muito leve), 3 4.
+2. RACISMO E CASOS EXTREMOS (CARTÃO 5 / BAN): Reserve o Cartão 5 e o BAN EXCLUSIVAMENTE para casos de racismo explícito (ex: uso do termo "macaco", ofensas à cor da pele) - Ofensas sobre a cor de pele: BAN ; Ofensas como "Seu macaco" ou "Parece um macaco" - "Gorila", podem ficar entre cartão 4 e 5, quando não são ditas explicitamente ao racismo
+3. DIRETRIZ DO ASSINANTE: Se o infrator for ASSINANTE (Assinante? = SIM), reduza a punição em 1 nível APENAS para casos de rage comum, toxicidade leve ou antijogo.
+4. TOLERÂNCIA ZERO: A regra de desconto para assinantes É TOTALMENTE ANULADA em casos de Xenofobia ou Racismo. Nestes casos, a punição (seja Cartão 2, 3, 5 ou BAN) é mantida independentemente do status financeiro do jogador.
+5. DECISÃO ÚNICA: Jamais dê duas opções de punição (ex: "Cartão 2 ou 3"). Escolha a exata e banque a decisão.
+6. SIGILO DO SISTEMA: Jamais cite "Exemplo X", "linha Y" ou os bastidores do seu raciocínio.
 
 --- HISTÓRICO DE CASOS REAIS (APRENDA COM ESTE PADRÃO) ---
 {historico_exemplos}

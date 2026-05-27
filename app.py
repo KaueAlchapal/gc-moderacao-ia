@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import google.generativeai as genai
 
-# Configuração da página do Streamlit
+# Configuração da página do Streamlit (ver depois a hospedagem)
 st.set_page_config(
     page_title="Zeus AI - Moderação",
     page_icon="🛡️",

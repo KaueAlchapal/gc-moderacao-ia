@@ -6,7 +6,7 @@ import google.generativeai as genai
 # Configuração da página do Streamlit (ver depois a hospedagem do streamlit)
 st.set_page_config(
     page_title="Zeus AI - Moderação",
-    page_icon="🛡️",
+    page_icon="logo.png",
     layout="centered"
 )
 

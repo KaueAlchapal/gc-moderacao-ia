@@ -1,9 +1,24 @@
-# 🛡️ GC Moderator AI
+⚡ Zeus - IA Moderadora de CX
 
-Assistente de Inteligência Artificial criado para apoiar a equipe de moderação da **Gamers Club**.
+Salve, família! 👋
 
-Este projeto utiliza **Python (Streamlit)** e a **API do Google Gemini** para ler reports de chat/voice e sugerir punições (Alertas, Cartões ou Ban) baseadas no nosso histórico orgânico de infrações.
+Apresento o **Zeus**, o nosso Assistente de Inteligência Artificial criado para apoiar o time de CX (Community Experience).
 
-**Arquivos principais:**
-* `app.py`: O código principal do site e da comunicação com a IA.
-* `casos.csv`: Nosso banco de dados orgânico com os exemplos reais de punições para treinar a IA.
+Sabemos que analisar logs de chat e denúncias pode ser cansativo e repetitivo. O objetivo do Zeus não é substituir o julgamento humano (a palavra final é sempre sua!), mas sim atuar como um "colega de bancada" super rápido. Ele lê as denúncias, cruza com as nossas regras internas e sugere a punição mais justa em segundos, ajudando a padronizar as nossas decisões.
+
+# Como o Zeus pensa?
+Ele foi treinado para seguir rigorosamente as nossas **Regras de Ouro**, incluindo:
+* **Tolerância Zero contra Preconceito:** Punições severas para xenofobia e homofobia (Cartões 2 a 4) e BAN imediato para racismo explícito.
+* **Diretriz de Assinantes:** O Zeus sabe que usuários assinantes da plataforma têm direito a redução de pena em casos leves de rage/toxicidade, mas ele corta esse benefício imediatamente se a infração envolver qualquer tipo de preconceito grave.
+* **Consistência:** Ele sugere sempre uma punição única e direta, para você não ter que ficar em dúvida.
+
+---
+
+# Como o projeto funciona (Sem termos difíceis)
+
+Este projeto usa uma interface simples e a inteligência do Google (Gemini) nos bastidores. Temos apenas dois arquivos que importam para nós:
+
+* Arquivo `app.py`: É onde estão as regras lógicas e o código da IA. **Você não precisa mexer aqui.**
+* Arquivo `casos.csv`: É o nosso **Livro de Regras**! É literalmente uma planilha com o nosso histórico orgânico de punições. É lendo esse arquivo que o Zeus aprende como a nossa equipe modera.
+
+*Desenvolvido para acelerar as análises e proteger a nossa comunidade.* 

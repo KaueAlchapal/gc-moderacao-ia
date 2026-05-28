@@ -35,7 +35,7 @@ if not api_key:
     st.stop()
 
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-3-flash')
+model = genai.GenerativeModel('gemini-3-flash-preview')
 
 # --- CONSTRUÇÃO DO PROMPT DO SISTEMA ---
 def construir_prompt_sistema(dados_csv, texto_usuario, eh_assinante):

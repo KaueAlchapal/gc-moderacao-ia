@@ -254,57 +254,53 @@ if enviar:
         with st.spinner(
             "⚡ Zeus está analisando..."
         ):
-
-            try:
-
-                prompt = construir_prompt(
-                    df_casos,
-                    texto_report,
-                    status_assinante
-                )
-response = model.generate_content(
-prompt,
-generation_config={
-"temperature": 0.25,
-"max_output_tokens": 120,
-},
-safety_settings={
-"HATE": "BLOCK_NONE",
-"HARASSMENT": "BLOCK_NONE",
-"SEXUAL": "BLOCK_ONLY_HIGH",
-"DANGEROUS": "BLOCK_ONLY_HIGH"
-}
+try:
+prompt = construir_prompt(
+    df_casos,
+    texto_report,
+    status_assinante
 )
 
+response = model.generate_content(
+    prompt,
+    generation_config={
+        "temperature": 0.25,
+        "max_output_tokens": 120,
+    },
+    safety_settings={
+        "HATE": "BLOCK_NONE",
+        "HARASSMENT": "BLOCK_NONE",
+        "SEXUAL": "BLOCK_ONLY_HIGH",
+        "DANGEROUS": "BLOCK_ONLY_HIGH"
+    }
+)
 
-                resposta_final = None
+resposta_final = None
 
-                try:
-                    resposta_final = response.text
-                except:
-                    resposta_final = None
+if response.candidates:
+    resposta_final = response.text
 
-                if not resposta_final:
+if not resposta_final:
 
-                    st.warning(
-                        "⚠️ O Gemini bloqueou automaticamente "
-                        "o conteúdo por segurança. "
-                        "Revise manualmente."
-                    )
+    st.warning(
+        "⚠️ O Gemini bloqueou automaticamente "
+        "o conteúdo por segurança. "
+        "Revise manualmente."
+    )
 
-                else:
+else:
 
-                    st.success(
-                        "✅ Análise concluída!"
-                    )
+    st.success(
+        "✅ Análise concluída!"
+    )
 
-                    st.markdown(
-                        "### 📢 Recomendação do Zeus:"
-                    )
+    st.markdown(
+        "### 📢 Recomendação do Zeus:"
+    )
 
-                    st.write(
-                        resposta_final
-                    )
+    st.write(
+        resposta_final
+    )
 
             except Exception as e:
 

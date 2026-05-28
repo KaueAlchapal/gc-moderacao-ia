@@ -214,7 +214,7 @@ NÃO utilize:
 Use SEMPRE este modelo:
 
 Recomendo **[PUNIÇÃO]** pois [explicação curta, humana e direta sobre a infração e gravidade].
-
+"""
 
     return prompt
 

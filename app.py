@@ -22,11 +22,18 @@ with col2:
 st.write("Esta ferramenta serve como apoio à tomada de decisão. Cole o log e verifique a recomendação baseada no nosso histórico de moderação.")
 
 # --- CARREGAMENTO DE DADOS (BANCO DE DADOS ORGÂNICO) - Vou ir atualizando conforme adicionarmos
-CSV_FILE = "casos.csv"
-if os.path.exists(CSV_FILE):
-    df_casos = pd.read_csv(CSV_FILE)
-else:
-    df_casos = pd.DataFrame(columns=["Exemplos de ocorridos nos reports (Falas/Chats)", "Punição aplicada", "Assinante?"])
+@st.cache_data
+def carregar_csv():
+    if os.path.exists(CSV_FILE):
+        return pd.read_csv(CSV_FILE)
+    else:
+        return pd.DataFrame(columns=[
+            "Exemplos de ocorridos nos reports (Falas/Chats)",
+            "Punição aplicada",
+            "Assinante?"
+        ])
+
+df_casos = carregar_csv()
 
 # CONFIGURAÇÃO DA API DO GEMINI - USANDO 3.0 FLASH
 api_key = os.environ.get("GEMINI_API_KEY")

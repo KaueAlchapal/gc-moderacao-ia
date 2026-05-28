@@ -28,20 +28,13 @@ layout="centered"
 
 # =========================================
 
-col1, col2 = st.columns([1, 4])
+st.image("logo.png", width=90)
 
-with col1:
-logo_existe = os.path.exists("logo.png")
-
-```
-if logo_existe:
-    st.image("logo.png", width=90)
-```
-
-with col2:
 st.title("Zeus - IA Moderadora")
-st.subheader("Assistente de Análise de Reports")
 
+st.subheader(
+"Assistente de Análise de Reports"
+)
 
 st.write(
 "Ferramenta de apoio à tomada de decisão "

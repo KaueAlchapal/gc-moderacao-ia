@@ -1,20 +1,21 @@
+```python
 import streamlit as st
 import pandas as pd
 import os
 import google.generativeai as genai
 
-# ==============================
+# =========================================
 # CONFIGURAÇÃO DA PÁGINA
-# ==============================
+# =========================================
 st.set_page_config(
     page_title="Zeus AI - Moderação",
     page_icon="logo.png",
     layout="centered"
 )
 
-# ==============================
+# =========================================
 # CABEÇALHO
-# ==============================
+# =========================================
 col1, col2 = st.columns([1, 4])
 
 with col1:
@@ -30,9 +31,9 @@ st.write(
     "Cole o log e verifique a recomendação baseada no histórico de moderação."
 )
 
-# ==============================
+# =========================================
 # CSV / BANCO ORGÂNICO
-# ==============================
+# =========================================
 CSV_FILE = "casos.csv"
 
 @st.cache_data
@@ -48,50 +49,59 @@ def carregar_csv():
 
 df_casos = carregar_csv()
 
-# ==============================
-# CONFIGURAÇÃO GEMINI
-# ==============================
+# =========================================
+# GEMINI
+# =========================================
 api_key = os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error(
-        "⚠️ Erro de Configuração: "
-        "A chave GEMINI_API_KEY não foi encontrada."
+        "⚠️ GEMINI_API_KEY não encontrada."
     )
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# MODELO MAIS RÁPIDO
-model = genai.GenerativeModel('gemini-3.1-flash-lite')
+# MODELO RÁPIDO E BARATO
+model = genai.GenerativeModel(
+    'gemini-3.1-flash-lite'
+)
 
-# ==============================
-# FUNÇÃO DO PROMPT
-# ==============================
-def construir_prompt_sistema(dados_csv, texto_usuario, eh_assinante):
+# =========================================
+# PROMPT
+# =========================================
+def construir_prompt_sistema(
+    dados_csv,
+    texto_usuario,
+    eh_assinante
+):
 
-    # PEGA APENAS OS 50 CASOS MAIS RECENTES
-    dados_csv = dados_csv.tail(50)
+    # Limita quantidade de casos
+    dados_csv = dados_csv.sample(
+        min(len(dados_csv), 80)
+    )
 
     historico_exemplos = ""
 
     for _, row in dados_csv.iterrows():
+
         historico_exemplos += (
-            f"Texto: {row['Exemplos de ocorridos nos reports (Falas/Chats)']}\n"
-            f"Assinante: {row['Assinante?']}\n"
-            f"Punição: {row['Punição aplicada']}\n\n"
+            f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
+            f'Punição: {row["Punição aplicada"]}\n\n'
         )
 
-    status_atual_assinante = "SIM" if eh_assinante else "NÃO"
+    status_atual_assinante = (
+        "SIM" if eh_assinante else "NÃO"
+    )
 
     prompt = f"""
 Você é Zeus, especialista sênior de moderação da Gamers Club.
 
 Sua função é analisar logs/reportes e recomendar UMA ÚNICA punição baseada EXCLUSIVAMENTE nas regras abaixo.
 
-========================
+==================================
 TABELA OFICIAL
-========================
+==================================
 
 - Alerta
 - Cartão 1 = 3 dias
@@ -101,43 +111,106 @@ TABELA OFICIAL
 - Cartão 5 = 180 dias
 - BAN = Permanente
 
-========================
-REGRAS
-========================
+==================================
+REGRAS GERAIS
+==================================
 
-1. Xenofobia:
-- leve = Cartão 2
-- agressiva/repetitiva = Cartão 3
-- extrema repetição = Cartão 4
-
-2. Racismo:
-- ofensa direta racial = BAN
-- "macaco", "gorila" etc = Cartão 4 ou 5
-- combinação racial + animal = BAN
-
-3. Homofobia:
-- Cartão 2 ou 3 dependendo agressividade
-
-4. Rage leve/genérico:
+1. Rage leve/genérico:
 - Alerta ou Cartão 1
 
+2. Xenofobia:
+- leve = Cartão 2
+- agressiva/repetitiva = Cartão 3
+- extrema = Cartão 4
+
+3. Homofobia:
+- Cartão 2 ou Cartão 3
+
+4. Racismo:
+- ofensa racial direta = BAN
+- associação ofensiva com primatas/animais = Cartão 4 ou Cartão 5
+- associação racial + animal = BAN
+
 5. Assinante:
-- reduz 1 nível SOMENTE em toxicidade leve
+- reduz 1 nível APENAS em toxicidade leve
 - NÃO reduz em racismo, xenofobia ou homofobia
 
-6. Nunca invente punições fora da tabela oficial.
+==================================
+CONTEXTO MULTILÍNGUE
+==================================
 
-7. Caso exista dúvida, escolha a punição mais conservadora.
+Considere expressões em:
+- português
+- espanhol
+- portunhol
+- gírias LATAM comuns em jogos online
 
-========================
+Termos como:
+- mono
+- monos
+- monito
+- simio
+- gorila
+- macaco
+- macaquinho
+
+PODEM representar ofensas racistas dependendo do contexto.
+
+Exemplos:
+
+- "mono de mierda"
+- "negro mono"
+- "mono asqueroso"
+- "pretitos"
+- "preto macaco"
+
+devem ser analisados considerando:
+- contexto
+- intenção
+- agressividade
+- associação racial
+
+==================================
+SEVERIDADE RACIAL
+==================================
+
+- "macaco" ou "mono" isolado como ofensa:
+Cartão 4
+
+- "macaco", "mono", "gorila" acompanhados de insultos agressivos:
+Cartão 5
+
+- associação direta à cor da pele:
+BAN
+
+Exemplos:
+- "seu preto"
+- "negro imundo"
+- "preto macaco"
+- "mono negro"
+
+devem resultar em BAN.
+
+==================================
+REGRAS IMPORTANTES
+==================================
+
+- Nunca invente punições fora da tabela.
+- Nunca alivie racismo por assinatura.
+- Escolha SEMPRE UMA ÚNICA punição.
+- Seja firme.
+- Não explique regras internas.
+- Não mencione exemplos históricos.
+
+==================================
 CASOS HISTÓRICOS
-========================
+==================================
 
 {historico_exemplos}
 
-========================
+==================================
 CASO ATUAL
-========================
+==================================
 
 Texto:
 "{texto_usuario}"
@@ -145,13 +218,13 @@ Texto:
 Assinante:
 {status_atual_assinante}
 
-========================
+==================================
 FORMATO OBRIGATÓRIO
-========================
+==================================
 
 Responda em no máximo 3 linhas.
 
-Formato:
+Formato obrigatório:
 
 Recomendo **[PUNIÇÃO]**
 Confiança: [0-100%]
@@ -160,73 +233,41 @@ Motivo: [explicação curta]
 
     return prompt
 
-# ==============================
-# INTERFACE
-# ==============================
+# =========================================
+# FORMULÁRIO
+# =========================================
 with st.form("form_analise"):
 
     texto_report = st.text_area(
         "📋 Cole aqui as falas ou logs do report:",
-        placeholder="Exemplo: seu baiano de merda..."
+        height=200,
+        placeholder="Exemplo: mono de mierda..."
     )
 
     status_assinante = st.checkbox(
-        "⭐ O jogador infrator é Assinante da Gamers Club?"
+        "⭐ O jogador infrator é Assinante?"
     )
 
-    botao_enviar = st.form_submit_button("🔍 Analisar Report")
+    botao_enviar = st.form_submit_button(
+        "🔍 Analisar Report"
+    )
 
-# ==============================
-# AÇÃO DO BOTÃO
-# ==============================
+# =========================================
+# ANÁLISE
+# =========================================
 if botao_enviar:
 
     if not texto_report.strip():
 
         st.warning(
-            "Por favor, cole algum texto antes de enviar."
+            "Por favor, cole algum texto."
         )
 
     else:
 
-        texto_lower = texto_report.lower()
-
-        # ==================================
-        # REGRAS AUTOMÁTICAS (INSTANTÂNEAS)
-        # ==================================
-
-        if "preto macaco" in texto_lower:
-
-            st.success("Análise Concluída!")
-
-            st.markdown("### 📢 Recomendação do Zeus:")
-
-            st.write(
-                "Recomendo **BAN**\n\n"
-                "Confiança: 100%\n\n"
-                "Motivo: Racismo explícito associado a ofensa animal."
-            )
-
-            st.stop()
-
-        if "seu preto" in texto_lower:
-
-            st.success("Análise Concluída!")
-
-            st.markdown("### 📢 Recomendação do Zeus:")
-
-            st.write(
-                "Recomendo **BAN**\n\n"
-                "Confiança: 100%\n\n"
-                "Motivo: Racismo explícito direto."
-            )
-
-            st.stop()
-
-        # ==================================
-        # IA
-        # ==================================
-        with st.spinner("⚡ Zeus está analisando o report..."):
+        with st.spinner(
+            "⚡ Zeus está analisando o report..."
+        ):
 
             try:
 
@@ -239,59 +280,40 @@ if botao_enviar:
                 response = model.generate_content(
                     prompt_completo,
                     generation_config={
-                        "temperature": 0.2,
-                        "max_output_tokens": 150,
+                        "temperature": 0.15,
+                        "max_output_tokens": 120,
                     }
                 )
 
                 resposta_final = response.text
 
-                st.success("Análise Concluída!")
+                st.success(
+                    "Análise concluída!"
+                )
 
-                st.markdown("### 📢 Recomendação do Zeus:")
+                st.markdown(
+                    "### 📢 Recomendação do Zeus:"
+                )
 
-                st.write(resposta_final)
-
-                # ==================================
-                # SALVAR NOVO CASO NO CSV
-                # ==================================
-                novo_caso = pd.DataFrame([{
-                    "Exemplos de ocorridos nos reports (Falas/Chats)": texto_report,
-                    "Punição aplicada": resposta_final,
-                    "Assinante?": "SIM" if status_assinante else "NÃO"
-                }])
-
-                novo_caso.to_csv(
-                    CSV_FILE,
-                    mode='a',
-                    header=not os.path.exists(CSV_FILE),
-                    index=False
+                st.write(
+                    resposta_final
                 )
 
             except Exception as e:
 
                 st.error(
-                    "Ocorreu um erro ao se comunicar com a IA."
+                    "Erro ao analisar report."
                 )
 
                 st.code(str(e))
 
-# ==============================
+# =========================================
 # RODAPÉ
-# ==============================
+# =========================================
 st.divider()
 
 st.caption(
     f"📊 Banco orgânico carregado: "
-    f"{len(df_casos)} casos reais mapeados."
+    f"{len(df_casos)} casos reais."
 )
-
-# ==============================
-# ÚLTIMOS CASOS
-# ==============================
-with st.expander("📚 Ver últimos casos adicionados"):
-
-    st.dataframe(
-        df_casos.tail(10),
-        use_container_width=True
-    )
+```

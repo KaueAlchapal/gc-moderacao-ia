@@ -304,3 +304,4 @@ st.divider()
 st.caption(
     f"📊 Banco carregado: {len(df_casos)} casos."
 )
+:::

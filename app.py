@@ -315,4 +315,3 @@ st.caption(
     f"📊 Banco orgânico carregado: "
     f"{len(df_casos)} casos reais."
 )
-```

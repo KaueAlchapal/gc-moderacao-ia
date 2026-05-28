@@ -63,7 +63,7 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # MODELO MAIS RÁPIDO
-model = genai.GenerativeModel('gemini-1.5-flash-8b')
+model = genai.GenerativeModel('gemini-3.1-flash-lite')
 
 # ==============================
 # FUNÇÃO DO PROMPT

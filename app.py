@@ -28,14 +28,14 @@ if os.path.exists(CSV_FILE):
 else:
     df_casos = pd.DataFrame(columns=["Exemplos de ocorridos nos reports (Falas/Chats)", "Punição aplicada", "Assinante?"])
 
-# CONFIGURAÇÃO DA API DO GEMINI - PRECISEI USAR 3.0 FLASH
+# CONFIGURAÇÃO DA API DO GEMINI - USANDO 3.0 FLASH
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     st.error("⚠️ Erro de Configuração: A chave da API do Gemini (GEMINI_API_KEY) não foi encontrada nas configurações de ambiente/Secrets.")
     st.stop()
 
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-3-flash-preview')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # --- CONSTRUÇÃO DO PROMPT DO SISTEMA ---
 def construir_prompt_sistema(dados_csv, texto_usuario, eh_assinante):

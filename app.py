@@ -195,12 +195,26 @@ Assinante:
 FORMATO
 ========================
 
-Responda em até 3 linhas:
+========================
+FORMATO
+=======
 
-Recomendo **[PUNIÇÃO]**
-Confiança: [0-100%]
-Motivo: [curto]
-"""
+Responda de forma natural, firme e objetiva, como um moderador humano experiente.
+
+Máximo de 2 ou 3 linhas.
+
+NÃO utilize:
+
+* porcentagem
+* confiança
+* tópicos
+* enumeração
+* explicações técnicas
+
+Use SEMPRE este modelo:
+
+Recomendo **[PUNIÇÃO]** pois [explicação curta, humana e direta sobre a infração e gravidade].
+
 
     return prompt
 

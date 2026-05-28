@@ -262,14 +262,20 @@ if enviar:
                     texto_report,
                     status_assinante
                 )
+response = model.generate_content(
+prompt,
+generation_config={
+"temperature": 0.25,
+"max_output_tokens": 120,
+},
+safety_settings={
+"HATE": "BLOCK_NONE",
+"HARASSMENT": "BLOCK_NONE",
+"SEXUAL": "BLOCK_ONLY_HIGH",
+"DANGEROUS": "BLOCK_ONLY_HIGH"
+}
+)
 
-                response = model.generate_content(
-                    prompt,
-                    generation_config={
-                        "temperature": 0.1,
-                        "max_output_tokens": 120,
-                    }
-                )
 
                 resposta_final = None
 

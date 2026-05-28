@@ -75,7 +75,11 @@ st.stop()
 
 genai.configure(api_key=api_key)
 
-# MODELO RÁPIDO
+# =========================================
+
+# MODELO
+
+# =========================================
 
 model = genai.GenerativeModel(
 "gemini-3.1-flash-lite"
@@ -94,7 +98,7 @@ eh_assinante
 ):
 
 ```
-# mistura diversidade
+# mistura casos variados
 quantidade = min(len(dados_csv), 25)
 
 exemplos = dados_csv.sample(
@@ -292,10 +296,6 @@ else:
                 }
             )
 
-            # =====================================
-            # TRATAMENTO DE BLOQUEIO
-            # =====================================
-
             resposta_final = None
 
             try:
@@ -303,13 +303,13 @@ else:
             except:
                 resposta_final = None
 
-            # se Gemini bloquear
+            # CASO O GEMINI BLOQUEIE
             if not resposta_final:
 
                 st.warning(
-                    "⚠️ O modelo bloqueou automaticamente "
+                    "⚠️ O Gemini bloqueou automaticamente "
                     "o conteúdo por segurança. "
-                    "Reveja manualmente o caso."
+                    "Revise manualmente."
                 )
 
             else:

@@ -22,7 +22,6 @@ layout="centered"
 
 # =========================================
 
-if os.path.exists("logo.png"):
 st.image("logo.png", width=90)
 
 st.title("Zeus - IA Moderadora")

@@ -1,4 +1,3 @@
-:::writing{variant="document" id="85421"}
 import streamlit as st
 import pandas as pd
 import os
@@ -70,7 +69,7 @@ genai.configure(api_key=api_key)
 # =========================================
 
 model = genai.GenerativeModel(
-    "gemini-1.5-flash-8b"
+    "gemini-3.1-flash-lite"
 )
 
 # =========================================
@@ -304,4 +303,3 @@ st.divider()
 st.caption(
     f"📊 Banco carregado: {len(df_casos)} casos."
 )
-:::

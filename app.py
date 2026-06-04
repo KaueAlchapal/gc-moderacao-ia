@@ -50,7 +50,7 @@ filtros_seguranca = {
 
 # O modelo recebe os filtros aqui para nunca mais dar o erro de "blocked prompt"
 model = genai.GenerativeModel(
-    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
     safety_settings=filtros_seguranca
 )
 

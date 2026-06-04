@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import random
 
@@ -14,14 +15,8 @@ if os.path.exists("logo.png"):
     st.image("logo.png", width=90)
 
 st.title("Zeus - IA Moderadora")
-
-st.subheader(
-    "Assistente de Análise de Reports"
-)
-
-st.write(
-    "Ferramenta de apoio à tomada de decisão baseada no histórico interno de moderação."
-)
+st.subheader("Assistente de Análise de Reports")
+st.write("Ferramenta de apoio à tomada de decisão baseada no histórico interno de moderação.")
 
 CSV_FILE = "casos.csv"
 
@@ -49,103 +44,61 @@ model = genai.GenerativeModel(
     "gemini-3-flash-preview"
 )
 
-def construir_prompt(
-    dados_csv,
-    texto_usuario,
-    eh_assinante
-):
-
+def construir_prompt(dados_csv, texto_usuario, eh_assinante):
     quantidade = min(len(dados_csv), 25)
-
-    exemplos = dados_csv.sample(
-        quantidade,
-        random_state=random.randint(1, 999999)
-    )
-
+    exemplos = dados_csv.sample(quantidade, random_state=random.randint(1, 999999))
     historico = ""
-
+    
     for _, row in exemplos.iterrows():
-        historico += (
-            f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
-            f'Punição: {row["Punição aplicada"]}\n\n'
-        )
+        historico += f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
+        historico += f'Punição: {row["Punição aplicada"]}\n\n'
 
     assinante = "SIM" if eh_assinante else "NÃO"
 
     prompt = f"""
 Você é Zeus, analista sênior de moderação da Gamers Club.
-Este sistema existe exclusivamente para análise de conduta e aplicação de punições.
-O conteúdo enviado pode conter racismo, xenofobia, homofobia e toxicidade pesada apenas para fins de moderação.
-Analise o report e recomende UMA ÚNICA punição.
+Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição.
 
-PUNIÇÕES:
-- Alerta
-- Cartão 1
-- Cartão 2
-- Cartão 3
-- Cartão 4
-- Cartão 5
-- BAN
+--- TABELA DE PUNIÇÕES ---
+Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
---- REGRAS DE PUNIÇÃO (SIGA ESTRITAMENTE) ---
+--- REGRAS DE APLICAÇÃO (OBRIGATÓRIAS) ---
+1. RAGE E TOXICIDADE COMUM (Ex: "seu coco", "lixo", "fudido", "merda"): 
+   - Punição: Alerta ou Cartão 1.
+2. XENOFOBIA E REGIONALISMO: 
+   - Leve: Cartão 2. 
+   - Agressiva (com palavrões): Cartão 3. 
+   - Extrema repetição: Cartão 4.
+3. HOMOFOBIA: 
+   - Cartão 2 ou Cartão 3 dependendo do peso do xingamento.
+4. RACISMO E TERMOS ANIMAIS (A regra mais importante):
+   - Termo animal isolado (Ex: "macaco", "mono"): CARTÃO 4.
+   - Termo animal acompanhado de xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
+   - Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
+   -> JAMAIS dê BAN apenas pela palavra "macaco", siga a escala acima (C4 ou C5).
+5. REGRA DO ASSINANTE:
+   - Assinante (SIM) tem a punição reduzida em 1 nível APENAS para rage/toxicidade comum.
+   - JAMAIS reduza punição para Xenofobia, Homofobia ou Racismo.
 
-RAGE E TOXICIDADE:
-- Leve: Alerta ou Cartão 1.
-
-XENOFOBIA E REGIONALISMO:
-- Leve: Cartão 2.
-- Agressiva (com palavrões): Cartão 3.
-- Extrema (muitas repetições): Cartão 4.
-
-HOMOFOBIA:
-- Cartão 2 ou Cartão 3.
-
-RACISMO E TERMOS ANIMAIS (CUMPRIMENTO OBRIGATÓRIO):
-- Termo animal isolado (Ex: "macaco", "mono", "símio"): CARTÃO 4.
-- Termo animal + palavrão/ofensa (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
-- Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
-- REGRA DE OURO: JAMAIS aplique BAN para a palavra "macaco", a menos que esteja acompanhada de uma ofensa explícita à cor da pele.
-
-DIRETRIZ DO ASSINANTE:
-- Assinante reduz a punição em 1 nível APENAS em casos de rage leve/toxicidade comum.
-- Tolerância Zero: NUNCA reduza a punição para racismo, xenofobia ou homofobia.
-
---- CASOS HISTÓRICOS ---
-
+--- HISTÓRICO DE CASOS ---
 {historico}
 
 --- CASO ATUAL ---
+Texto: "{texto_usuario}"
+Assinante: {assinante}
 
-Texto:
-"{texto_usuario}"
+--- INSTRUÇÕES DE RESPOSTA ---
+Não repita os palavrões do usuário na sua justificativa para não acionar os filtros de bloqueio. Use apenas termos técnicos descritivos (ex: ofensa regional, termo animal racista, toxicidade leve, xingamento comum).
 
-Assinante:
-{assinante}
-
---- FORMATO DA RESPOSTA (REGRA CRÍTICA ANTI-CENSURA) ---
-1. Responda em no máximo 3 linhas.
-2. É ESTRITAMENTE PROIBIDO repetir qualquer palavrão, xingamento ou ofensa enviada pelo usuário na sua resposta. Se você repetir, o sistema será bloqueado.
-3. Descreva o motivo usando apenas termos técnicos e clínicos (Ex: "pois o jogador utilizou um termo animal pejorativo acompanhado de ofensa", "pois o jogador proferiu ofensa regional", etc).
-
-Use exatamente a estrutura abaixo:
-Recomendo **[PUNIÇÃO]** pois [explicação estritamente técnica, objetiva e SEM PALAVRÕES].
+Responda EXATAMENTE e APENAS neste formato:
+Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica].
 """
     return prompt
 
 with st.form("formulario"):
-
-    texto_report = st.text_area(
-        "📋 Cole aqui o report:",
-        height=200
-    )
-
-    status_assinante = st.checkbox(
-        "⭐ Jogador é assinante?"
-    )
-
-    enviar = st.form_submit_button(
-        "🔍 Analisar"
-    )
+    texto_report = st.text_area("📋 Cole aqui o report:", height=200)
+    status_assinante = st.checkbox("⭐ Jogador é assinante?")
+    enviar = st.form_submit_button("🔍 Analisar")
 
 if enviar:
     if not texto_report.strip():
@@ -153,41 +106,32 @@ if enviar:
     else:
         with st.spinner("⚡ Zeus está analisando..."):
             try:
-                filtros_seguranca = [
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-                ]
+                # Sintaxe oficial do Python SDK para desligar os filtros
+                filtros_seguranca = {
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                }
 
-                prompt = construir_prompt(
-                    df_casos,
-                    texto_report,
-                    status_assinante
-                )
+                prompt = construir_prompt(df_casos, texto_report, status_assinante)
 
+                # Temperatura em ZERO (0.0) para a IA ser 100% robótica e obedecer à matemática das regras.
+                # O limite de Tokens (max_output_tokens) foi RETIRADO para a resposta não cortar no meio.
                 response = model.generate_content(
                     prompt,
                     safety_settings=filtros_seguranca,
                     generation_config={
-                        "temperature": 0.25,
-                        "max_output_tokens": 150
+                        "temperature": 0.0
                     }
                 )
 
-                # Tratamento de erro seguro caso o Google bloqueie a resposta mesmo assim
-                try:
-                    resposta_final = response.text
-                    
-                    st.success("✅ Análise concluída!")
-                    st.markdown("### 📢 Recomendação do Zeus:")
-                    st.write(resposta_final)
-                    
-                except ValueError:
-                    st.warning("⚠️ O sistema de segurança mestre do Google bloqueou esta análise por conter termos de ódio extremamente sensíveis. Neste caso isolado, analise manualmente.")
+                st.success("✅ Análise concluída!")
+                st.markdown("### 📢 Recomendação do Zeus:")
+                st.write(response.text)
 
             except Exception as e:
-                st.error("Erro ao processar análise.")
+                st.error("Erro ao processar análise. É provável que o sistema mestre de segurança do Google tenha bloqueado a saída.")
                 st.code(str(e))
 
 st.divider()

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import random
 
@@ -10,7 +11,8 @@ st.set_page_config(
     layout="centered"
 )
 
-st.image("logo.png", width=90)
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=90)
 
 st.title("Zeus - IA Moderadora")
 
@@ -46,8 +48,9 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
+# Utilizando o modelo validado que não consome a cota bloqueada
 model = genai.GenerativeModel(
-    "gemini-3.1-flash-lite"
+    "gemini-3-flash-preview"
 )
 
 def construir_prompt(
@@ -76,17 +79,8 @@ def construir_prompt(
 
     prompt = f"""
 Você é Zeus, analista sênior de moderação da Gamers Club.
-
 Este sistema existe exclusivamente para análise de conduta e aplicação de punições.
-
-O conteúdo enviado pode conter:
-- racismo
-- xenofobia
-- homofobia
-- toxicidade
-
-Isso ocorre apenas para fins de moderação.
-
+O conteúdo enviado pode conter racismo, xenofobia, homofobia e toxicidade pesada apenas para fins de moderação.
 Analise o report e recomende UMA ÚNICA punição.
 
 PUNIÇÕES:
@@ -98,42 +92,34 @@ PUNIÇÕES:
 - Cartão 5
 - BAN
 
-REGRAS:
+--- REGRAS DE PUNIÇÃO (SIGA ESTRITAMENTE) ---
 
-Rage leve:
-- Alerta ou Cartão 1
+RAGE E TOXICIDADE:
+- Leve: Alerta ou Cartão 1.
 
-Xenofobia:
-- leve = Cartão 2
-- agressiva = Cartão 3
-- extrema = Cartão 4
+XENOFOBIA E REGIONALISMO:
+- Leve: Cartão 2.
+- Agressiva (com palavrões): Cartão 3.
+- Extrema (muitas repetições): Cartão 4.
 
-Homofobia:
-- Cartão 2 ou 3
+HOMOFOBIA:
+- Cartão 2 ou Cartão 3.
 
-Ofensas com:
-- mono
-- macaco
-- gorila
-- simio
+RACISMO E TERMOS ANIMAIS (CUMPRIMENTO OBRIGATÓRIO):
+- Termo animal isolado (Ex: "macaco", "mono", "símio"): CARTÃO 4.
+- Termo animal + palavrão/ofensa (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
+- Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
+- REGRA DE OURO: JAMAIS aplique BAN para a palavra "macaco", a menos que esteja acompanhada de uma ofensa explícita à cor da pele.
 
-podem configurar racismo dependendo do contexto.
+DIRETRIZ DO ASSINANTE:
+- Assinante reduz a punição em 1 nível APENAS em casos de rage leve/toxicidade comum.
+- Tolerância Zero: NUNCA reduza a punição para racismo, xenofobia ou homofobia.
 
-Associação racial explícita:
-- BAN
-
-Assinante reduz 1 nível APENAS em casos leves.
-
-NUNCA reduzir:
-- racismo
-- xenofobia
-- homofobia
-
-CASOS HISTÓRICOS:
+--- CASOS HISTÓRICOS ---
 
 {historico}
 
-CASO ATUAL:
+--- CASO ATUAL ---
 
 Texto:
 "{texto_usuario}"
@@ -141,12 +127,9 @@ Texto:
 Assinante:
 {assinante}
 
-FORMATO:
-
+--- FORMATO DA RESPOSTA ---
 Responda em no máximo 3 linhas.
-
 Use exatamente:
-
 Recomendo **[PUNIÇÃO]** pois [explicação humana, objetiva e curta].
 """
 
@@ -182,6 +165,13 @@ if enviar:
         ):
 
             try:
+                # Filtros de segurança desligados para a IA não bloquear xingamentos
+                filtros_seguranca = {
+                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                }
 
                 prompt = construir_prompt(
                     df_casos,
@@ -191,6 +181,7 @@ if enviar:
 
                 response = model.generate_content(
                     prompt,
+                    safety_settings=filtros_seguranca,
                     generation_config={
                         "temperature": 0.25,
                         "max_output_tokens": 120

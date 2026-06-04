@@ -76,21 +76,26 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 1. OFENSAS LEVES E TOXICIDADE COMUM:
    - Termos isolados, xingamentos bobos ou irritação leve (Ex: "seu coco", "seu bosta", "seu merda", "seu verme imundo", "seu imundo", "lixo"): A punição deve ser obrigatoriamente **Alerta**.
    - Se o jogador repetir esses termos de toxicidade comum várias vezes no mesmo log (uma sequência de xingamentos leves ou reclamações agressivas repetidas): Suba a punição para **Cartão 1**.
+
 2. XENOFOBIA E REGIONALISMO: 
-   - Leve: Cartão 2. 
-   - Agressiva (com palavrões pesados): Cartão 3. 
-   - Extrema repetição (mais de 4 vezes falando da região): Cartão 4.
+   - Leve e Isolada (Ofensa com o termo regional sozinho, curto e sem xingamentos agressivos. Ex: "seu nordestino", "seu baiano", "baiano"): CARTÃO 2.
+   - Agressiva ou Repetitiva (Termo regional acompanhado de xingamentos ou repetido. Ex: "baiano de merda", "seu nordestino lixo", "seu nordestino, baiano de merda"): CARTÃO 3.
+   - Extrema repetição (Ofensas à região repetidas mais de 4 vezes no mesmo log): CARTÃO 4.
+
 3. HOMOFOBIA: 
    - Cartão 2 ou Cartão 3, dependendo da agressividade e contexto.
+
 4. RACISMO E TERMOS ANIMAIS:
    - Termo animal isolado (Ex: "macaco", "mono"): CARTÃO 4.
    - Termo animal acompanhado de xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
    - Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
    -> JAMAIS aplique BAN apenas pela palavra "macaco" isolada ou com xingamentos comuns, siga estritamente a escala (C4 ou C5).
+
 5. NAZISMO E IDEOLOGIAS EXTREMAS:
    - Acusação ou ofensa isolada usando o termo (Ex: "seu nazista"): CARTÃO 4.
    - Ofensa usando o termo somada a outros xingamentos pesados e agressivos (Ex: "seu nazista, você é racista seu lixo seu merda"): CARTÃO 5.
    - Apologia real, adoração a Adolf Hitler, saudações nazistas ou propagação ativa da ideologia: BAN.
+
 6. REGRA DO ASSINANTE:
    - Assinante (SIM) reduz a punição em 1 nível APENAS para os casos da Regra 1 (Rage/Toxicidade comum). Se a punição original calculada era Cartão 1, vira Alerta. Se era Alerta, permanece Alerta.
    - JAMAIS reduza a punição para os casos de Xenofobia, Homofobia, Racismo ou Nazismo.
@@ -103,7 +108,7 @@ Texto: "{texto_usuario}"
 Assinante: {assinante}
 
 --- INSTRUÇÕES DE RESPOSTA ---
-Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar alertas no sistema. Use termos técnicos e formais (ex: apologia ideológica extrema, acusação ideológica isolada, xingamentos comuns acumulados).
+Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar alertas no sistema. Use termos técnicos e formais (ex: apologia ideológica extrema, acusação ideológica isolada, ofensa regional somada a xingamento, ofensa regional isolada, etc).
 
 Responda EXATAMENTE e APENAS neste formato:
 Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica curta].
@@ -130,7 +135,6 @@ if enviar:
                     }
                 )
 
-                # Proteção extra para verificar se o prompt não veio bloqueado por alguma regra global
                 if not response.candidates or len(response.candidates) == 0:
                     st.warning("⚠️ A análise foi contida pelos filtros de segurança da API. Tente reescrever o caso removendo palavras excessivamente pesadas.")
                 else:

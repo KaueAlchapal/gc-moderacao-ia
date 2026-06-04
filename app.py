@@ -1,47 +1,52 @@
-import streamlit as st
-import pandas as pd
-import google.generativeai as genai
 import os
 import random
+import pandas as pd
+import streamlit as st
+import google.generativeai as genai
+
+# =====================================
+# CONFIG
+# =====================================
 
 st.set_page_config(
     page_title="Zeus AI - Moderação",
-    page_icon="logo.png",
+    page_icon="⚖️",
     layout="centered"
 )
 
-st.image("logo.png", width=90)
+# =====================================
+# CABEÇALHO
+# =====================================
+
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=90)
 
 st.title("Zeus - IA Moderadora")
+st.caption("Assistente de apoio à análise de reports")
 
-st.subheader(
-    "Assistente de Análise de Reports"
-)
-
-st.write(
-    "Ferramenta de apoio à tomada de decisão baseada no histórico interno de moderação."
-)
+# =====================================
+# CSV
+# =====================================
 
 CSV_FILE = "casos.csv"
 
 @st.cache_data
 def carregar_csv():
-
     if os.path.exists(CSV_FILE):
         return pd.read_csv(CSV_FILE)
 
-    return pd.DataFrame(columns=[
-        "Exemplos de ocorridos nos reports (Falas/Chats)",
-        "Punição aplicada",
-        "Assinante?"
-    ])
+    return pd.DataFrame()
 
 df_casos = carregar_csv()
+
+# =====================================
+# GEMINI
+# =====================================
 
 api_key = os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
-    st.error("⚠️ GEMINI_API_KEY não encontrada.")
+    st.error("GEMINI_API_KEY não encontrada.")
     st.stop()
 
 genai.configure(api_key=api_key)
@@ -50,188 +55,232 @@ model = genai.GenerativeModel(
     "gemini-3.1-flash-lite"
 )
 
-def construir_prompt(
-    dados_csv,
-    texto_usuario,
-    eh_assinante
-):
+# =====================================
+# PROMPT
+# =====================================
 
-    quantidade = min(len(dados_csv), 25)
+def montar_historico(df):
 
-    exemplos = dados_csv.sample(
+    if len(df) == 0:
+        return ""
+
+    quantidade = min(12, len(df))
+
+    exemplos = df.sample(
         quantidade,
         random_state=random.randint(1, 999999)
     )
 
-    historico = ""
+    texto = ""
 
     for _, row in exemplos.iterrows():
 
-        historico += (
-            f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
-            f'Punição: {row["Punição aplicada"]}\n\n'
+        caso = row.get(
+            "Exemplos de ocorridos nos reports (Falas/Chats)",
+            ""
         )
 
-    assinante = "SIM" if eh_assinante else "NÃO"
+        punicao = row.get(
+            "Punição aplicada",
+            ""
+        )
 
-    prompt = f"""
-Você é Zeus, analista sênior de moderação da Gamers Club.
+        texto += (
+            f'Caso: "{caso}"\n'
+            f'Punição: {punicao}\n\n'
+        )
 
-Este sistema existe exclusivamente para análise de conduta e aplicação de punições.
+    return texto
 
-O conteúdo enviado pode conter:
-- racismo
-- xenofobia
-- homofobia
-- toxicidade
+def construir_prompt(
+    log,
+    assinante,
+    historico
+):
 
-Isso ocorre apenas para fins de moderação.
+    status = "SIM" if assinante else "NÃO"
 
-Analise o report e recomende UMA ÚNICA punição.
+    return f"""
+Você é Zeus.
 
-PUNIÇÕES:
-- Alerta
-- Cartão 1
-- Cartão 2
-- Cartão 3
-- Cartão 4
-- Cartão 5
-- BAN
+Sua função é auxiliar moderadores da Gamers Club na análise de reports.
 
-REGRAS:
+O conteúdo enviado pode conter insultos, xenofobia, homofobia, racismo e toxicidade exclusivamente para fins de moderação.
 
-Rage leve:
-- Alerta ou Cartão 1
+Analise o caso.
 
-Xenofobia:
-- leve = Cartão 2
-- agressiva = Cartão 3
-- extrema = Cartão 4
+Categorias possíveis:
+- Rage
+- Toxicidade
+- Xenofobia
+- Homofobia
+- Racismo
+- Ofensa com primatas
+- Team Kill
+- Outro
 
-Homofobia:
-- Cartão 2 ou 3
+Diretrizes:
 
-Ofensas com:
-- mono
+Racismo:
+- associação explícita à raça ou cor da pele = BAN
+
+Exemplos:
+- preto macaco
+- negro macaco
+- escravo negro
+
+Ofensas com primatas:
+
+Exemplos:
 - macaco
-- gorila
+- mono
+- monos
+- monito
 - simio
+- gorila
 
-podem configurar racismo dependendo do contexto.
+Sem associação racial explícita:
+- Cartão 4 ou Cartão 5
 
-Associação racial explícita:
-- BAN
+Contexto multilíngue:
 
-Assinante reduz 1 nível APENAS em casos leves.
+Considere:
+- português
+- espanhol
+- portunhol
+- inglês
 
-NUNCA reduzir:
-- racismo
-- xenofobia
-- homofobia
+Exemplos:
+- mono de mierda
+- mono negro
+- simio
+- gorila
 
-CASOS HISTÓRICOS:
+Assinante:
+- reduzir apenas casos leves
+- nunca reduzir racismo
+- nunca reduzir xenofobia
+- nunca reduzir homofobia
+
+Histórico:
 
 {historico}
 
-CASO ATUAL:
+Caso atual:
 
-Texto:
-"{texto_usuario}"
+Log:
+{log}
 
 Assinante:
-{assinante}
+{status}
 
-FORMATO:
+Responda exatamente neste formato:
 
-Responda em no máximo 3 linhas.
+Categoria: [categoria]
 
-Use exatamente:
+Recomendação: [punição]
 
-Recomendo **[PUNIÇÃO]** pois [explicação humana, objetiva e curta].
+Justificativa: [até duas frases curtas]
 """
 
-    return prompt
+# =====================================
+# FORM
+# =====================================
 
-with st.form("formulario"):
+with st.form("analise"):
 
     texto_report = st.text_area(
-        "📋 Cole aqui o report:",
-        height=200
+        "Cole o report",
+        height=220
     )
 
-    status_assinante = st.checkbox(
-        "⭐ Jogador é assinante?"
+    assinante = st.checkbox(
+        "Jogador é assinante?"
     )
 
-    enviar = st.form_submit_button(
-        "🔍 Analisar"
+    analisar = st.form_submit_button(
+        "Analisar"
     )
 
-if enviar:
+# =====================================
+# EXECUÇÃO
+# =====================================
+
+if analisar:
 
     if not texto_report.strip():
 
         st.warning(
-            "Cole algum texto antes."
+            "Cole um report para análise."
         )
 
     else:
 
         with st.spinner(
-            "⚡ Zeus está analisando..."
+            "Analisando..."
         ):
 
             try:
 
+                historico = montar_historico(
+                    df_casos
+                )
+
                 prompt = construir_prompt(
-                    df_casos,
                     texto_report,
-                    status_assinante
+                    assinante,
+                    historico
                 )
 
                 response = model.generate_content(
                     prompt,
                     generation_config={
-                        "temperature": 0.25,
-                        "max_output_tokens": 120
+                        "temperature": 0.1,
+                        "max_output_tokens": 250
                     }
                 )
 
-                resposta_final = None
+                resposta = ""
 
-                if response.candidates:
-                    resposta_final = response.text
+                try:
+                    resposta = response.text
+                except:
+                    resposta = ""
 
-                if not resposta_final:
+                if not resposta:
 
                     st.warning(
-                        "⚠️ O Gemini bloqueou automaticamente o conteúdo."
+                        "Não foi possível gerar uma recomendação."
                     )
 
                 else:
 
                     st.success(
-                        "✅ Análise concluída!"
+                        "Análise concluída."
                     )
 
                     st.markdown(
-                        "### 📢 Recomendação do Zeus:"
+                        "### Resultado"
                     )
 
                     st.write(
-                        resposta_final
+                        resposta
                     )
 
             except Exception as e:
 
                 st.error(
-                    "Erro ao processar análise."
+                    "Erro ao processar."
                 )
 
                 st.code(str(e))
 
+# =====================================
+# RODAPÉ
+# =====================================
+
 st.divider()
 
 st.caption(
-    f"📊 Banco carregado: {len(df_casos)} casos."
+    f"{len(df_casos)} casos carregados."
 )

@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import random
 
@@ -40,18 +39,17 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- BLINDAGEM CONTRA CENSURA (Zera os filtros na entrada e na saída da API) ---
-filtros_seguranca = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
+# --- BLINDAGEM MÁXIMA PARA MODELOS LITE ---
+filtros_seguranca = [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+]
 
-# O modelo recebe os filtros aqui para nunca mais dar o erro de "blocked prompt"
+# Configurando o modelo Lite
 model = genai.GenerativeModel(
-    "gemini-3.1-flash-lite",
-    safety_settings=filtros_seguranca
+    "gemini-3.1-flash-lite"
 )
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante):
@@ -67,48 +65,52 @@ def construir_prompt(dados_csv, texto_usuario, eh_assinante):
 
     prompt = f"""
 Você é Zeus, analista sênior de moderação da Gamers Club.
-Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição correta baseada nas regras abaixo.
+Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição correta baseada nas regras abaixo. O texto fornecido é estritamente um dado técnico coletado de um log de servidor, e sua análise forense é uma exigência corporativa de segurança para punir os infratores.
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 --- REGRAS DE APLICAÇÃO (OBRIGATÓRIAS) ---
 1. OFENSAS LEVES E TOXICIDADE COMUM:
-   - Termos isolados, xingamentos bobos ou irritação leve (Ex: "seu coco", "seu bosta", "seu merda", "seu verme imundo", "seu imundo", "lixo"): A punição deve ser obrigatoriamente **Alerta**.
-   - Se o jogador repetir esses termos de toxicidade comum várias vezes no mesmo log (uma sequência de xingamentos leves ou reclamações agressivas repetidas): Suba a punição para **Cartão 1**.
+   - Termos isolados, xingamentos bobos ou irritação leve (Ex: "seu coco", "seu bosta", "seu merda", "lixo"): Punição obrigatória de **Alerta**.
+   - Se o jogador repetir esses termos leves várias vezes no mesmo log: Suba a punição para **Cartão 1**.
 
 2. XENOFOBIA E REGIONALISMO: 
-   - Leve e Isolada (Ofensa com o termo regional sozinho, curto e sem xingamentos agressivos. Ex: "seu nordestino", "seu baiano", "baiano"): CARTÃO 2.
-   - Agressiva ou Repetitiva (Termo regional acompanhado de xingamentos ou repetido. Ex: "baiano de merda", "seu nordestino lixo", "seu nordestino, baiano de merda"): CARTÃO 3.
-   - Extrema repetição (Ofensas à região repetidas mais de 4 vezes no mesmo log): CARTÃO 4.
+   - Leve e Isolada (Ex: "seu nordestino", "seu baiano", "baiano"): CARTÃO 2.
+   - Agressiva ou Repetitiva (Ex: "baiano de merda", "seu nordestino lixo", "seu nordestino, baiano de merda"): CARTÃO 3.
+   - Extrema repetição (Ofensas repetidas mais de 4 vezes no log): CARTÃO 4.
 
 3. HOMOFOBIA: 
    - Cartão 2 ou Cartão 3, dependendo da agressividade e contexto.
 
 4. RACISMO E TERMOS ANIMAIS:
    - Termo animal isolado (Ex: "macaco", "mono"): CARTÃO 4.
-   - Termo animal acompanhado de xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
+   - Termo animal + xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
    - Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
-   -> JAMAIS aplique BAN apenas pela palavra "macaco" isolada ou com xingamentos comuns, siga estritamente a escala (C4 ou C5).
+   -> JAMAIS aplique BAN apenas pela palavra "macaco" isolada ou com xingamentos comuns (use C4 ou C5).
 
 5. NAZISMO E IDEOLOGIAS EXTREMAS:
-   - Acusação ou ofensa isolada usando o termo (Ex: "seu nazista"): CARTÃO 4.
-   - Ofensa usando o termo somada a outros xingamentos pesados e agressivos (Ex: "seu nazista, você é racista seu lixo seu merda"): CARTÃO 5.
-   - Apologia real, adoração a Adolf Hitler, saudações nazistas ou propagação ativa da ideologia: BAN.
+   - Acusação isolada (Ex: "seu nazista"): CARTÃO 4.
+   - Acusação + xingamentos (Ex: "seu nazista, você é racista seu lixo"): CARTÃO 5.
+   - Apologia real, adoração a Hitler, saudações nazistas: BAN.
 
-6. REGRA DO ASSINANTE:
-   - Assinante (SIM) reduz a punição em 1 nível APENAS para os casos da Regra 1 (Rage/Toxicidade comum). Se a punição original calculada era Cartão 1, vira Alerta. Se era Alerta, permanece Alerta.
-   - JAMAIS reduza a punição para os casos de Xenofobia, Homofobia, Racismo ou Nazismo.
+6. AMEAÇAS, ABUSO E VIOLÊNCIA SEXUAL (ESTUPRO/ESTRUPO):
+   - Menção genérica ou ofensa isolada (Ex: "você é um estuprado", "você foi estuprado certeza", "seu estuprado", "estrupo", "vou abusar da sua mãe"): CARTÃO 4.
+   - Ameaças graves, descritivas, extremamente repetitivas ou envolvendo menores/familiares (Ex: "você foi estuprado, seu pai te abusou", "seu tio vai te abusar", "vou estuprar sua irmãzinha", "vou estuprar sua filha", "seu filho"): CARTÃO 5.
+
+7. REGRA DO ASSINANTE:
+   - Assinante (SIM) reduz a punição em 1 nível APENAS para os casos da Regra 1 (Rage/Toxicidade comum).
+   - JAMAIS reduza a punição para os casos de Xenofobia, Homofobia, Racismo, Nazismo ou Abuso/Violência Sexual.
 
 --- HISTÓRICO DE CASOS ---
 {historico}
 
---- CASO ATUAL ---
-Texto: "{texto_usuario}"
-Assinante: {assinante}
+--- CASO ATUAL (DADO TÉCNICO DE LOG) ---
+[INÍCIO DO LOG EXTRAÍDO DO SERVIDOR]: "{texto_usuario}"
+[STATUS DA CONTA]: Assinante = {assinante}
 
 --- INSTRUÇÕES DE RESPOSTA ---
-Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar alertas no sistema. Use termos técnicos e formais (ex: apologia ideológica extrema, acusação ideológica isolada, ofensa regional somada a xingamento, ofensa regional isolada, etc).
+Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar acionar os alertas no sistema. Use termos técnicos forenses (ex: ofensa regional isolada, menção genérica a abuso, ameaça grave a familiar, toxicidade leve isolada, etc).
 
 Responda EXATAMENTE e APENAS neste formato:
 Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica curta].
@@ -130,13 +132,14 @@ if enviar:
 
                 response = model.generate_content(
                     prompt,
+                    safety_settings=filtros_seguranca,
                     generation_config={
                         "temperature": 0.0
                     }
                 )
 
                 if not response.candidates or len(response.candidates) == 0:
-                    st.warning("⚠️ A análise foi contida pelos filtros de segurança da API. Tente reescrever o caso removendo palavras excessivamente pesadas.")
+                    st.warning("⚠️ A análise foi contida pelos filtros de segurança mestre da API. O Google bloqueou o termo na raiz por violar políticas irrevogáveis de violência. Tente reescrever o log removendo a ofensa mais explícita para o sistema conseguir ler.")
                 else:
                     st.success("✅ Análise concluída!")
                     st.markdown("### 📢 Recomendação do Zeus:")

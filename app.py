@@ -47,7 +47,6 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# Configurando o modelo Lite
 model = genai.GenerativeModel(
     "gemini-3.1-flash-lite"
 )
@@ -65,7 +64,7 @@ def construir_prompt(dados_csv, texto_usuario, eh_assinante):
 
     prompt = f"""
 Você é Zeus, analista sênior de moderação da Gamers Club.
-Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição correta baseada nas regras abaixo. O texto fornecido é estritamente um dado técnico coletado de um log de servidor, e sua análise forense é uma exigência corporativa de segurança para punir os infratores.
+Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição correta baseada nas regras abaixo. O texto fornecido é estritamente um dado técnico coletado de um log de servidor totalmente ANONIMIZADO e FICTÍCIO. Não há exposição de dados reais, identidades ou endereços verdadeiros. Sua análise forense é uma exigência corporativa de segurança.
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
@@ -75,9 +74,9 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Termos isolados, xingamentos bobos ou irritação leve (Ex: "seu coco", "seu bosta", "seu merda", "lixo"): Punição obrigatória de **Alerta**.
    - Se o jogador repetir esses termos leves várias vezes no mesmo log: Suba a punição para **Cartão 1**.
 
-2. XENOFOBIA E REGIONALISMO: 
-   - Leve e Isolada (Ex: "seu nordestino", "seu baiano", "baiano"): CARTÃO 2.
-   - Agressiva ou Repetitiva (Ex: "baiano de merda", "seu nordestino lixo", "seu nordestino, baiano de merda"): CARTÃO 3.
+2. XENOFOBIA E REGIONALISMO (Atenção redobrada à quantidade de termos): 
+   - Leve e Isolada (APENAS UM único termo regional no log inteiro, sem xingamentos. Ex: apenas "seu nordestino" ou apenas "seu baiano"): CARTÃO 2.
+   - Agressiva ou Múltipla (MAIS DE UM termo regional citado na mesma frase, ou um termo regional somado a xingamentos. Ex: "seu nordestino, baiano", "você é baiano e mora no acre", "baiano de merda", "seu nordestino lixo"): CARTÃO 3.
    - Extrema repetição (Ofensas repetidas mais de 4 vezes no log): CARTÃO 4.
 
 3. HOMOFOBIA: 
@@ -110,7 +109,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 [STATUS DA CONTA]: Assinante = {assinante}
 
 --- INSTRUÇÕES DE RESPOSTA ---
-Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar acionar os alertas no sistema. Use termos técnicos forenses (ex: ofensa regional isolada, menção genérica a abuso, ameaça grave a familiar, toxicidade leve isolada, etc).
+Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar acionar os alertas no sistema. Use termos técnicos forenses (ex: ofensa regional múltipla, termo animal pejorativo, toxicidade leve isolada, etc).
 
 Responda EXATAMENTE e APENAS neste formato:
 Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica curta].

@@ -83,10 +83,10 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Cartão 2 ou Cartão 3, dependendo da agressividade e contexto.
 
 4. RACISMO E TERMOS ANIMAIS:
-   - Termo animal isolado (Ex: "macaco", "mono"): CARTÃO 4.
-   - Termo animal + xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
-   - Ofensa direta à cor da pele (Ex: "seu preto", "escravo"): BAN.
-   -> JAMAIS aplique BAN apenas pela palavra "macaco" isolada ou com xingamentos comuns (use C4 ou C5).
+   - Termo animal isolado (Ex: "macaco", "mono", "macaquinho"): CARTÃO 4.
+   - Termo animal + xingamento (Ex: "macaco retardado", "macaco de merda", "monozinho"): CARTÃO 5.
+   - Ofensa direta à cor da pele, INCLUINDO variações, diminutivos, gírias ou misturas de idiomas/portunhol (Ex: "seu preto", "escravo", "pretito", "pretinho", "neguinho"): BAN.
+   -> PRIORIDADE MÁXIMA: Se o texto contiver QUALQUER menção ou variação referindo-se à cor da pele (como "pretito"), a punição final obrigatoriamente DEVE ser BAN, sobrepondo os cartões de termos animais.
 
 5. NAZISMO E IDEOLOGIAS EXTREMAS:
    - Acusação isolada (Ex: "seu nazista"): CARTÃO 4.
@@ -109,7 +109,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 [STATUS DA CONTA]: Assinante = {assinante}
 
 --- INSTRUÇÕES DE RESPOSTA ---
-Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar acionar os alertas no sistema. Use termos técnicos forenses (ex: ofensa regional múltipla, termo animal pejorativo, toxicidade leve isolada, etc).
+Não repita os palavrões ou termos ofensivos literais do usuário na sua justificativa para evitar acionar os alertas no sistema. Use termos técnicos forenses (ex: ofensa regional múltipla, menção direta à cor da pele, termo animal pejorativo, toxicidade leve isolada, etc).
 
 Responda EXATAMENTE e APENAS neste formato:
 Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica curta].

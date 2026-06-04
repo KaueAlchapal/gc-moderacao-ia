@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import random
 
@@ -28,10 +27,8 @@ CSV_FILE = "casos.csv"
 
 @st.cache_data
 def carregar_csv():
-
     if os.path.exists(CSV_FILE):
         return pd.read_csv(CSV_FILE)
-
     return pd.DataFrame(columns=[
         "Exemplos de ocorridos nos reports (Falas/Chats)",
         "Punição aplicada",
@@ -48,7 +45,6 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# Utilizando o modelo validado que não consome a cota bloqueada
 model = genai.GenerativeModel(
     "gemini-3-flash-preview"
 )
@@ -69,7 +65,6 @@ def construir_prompt(
     historico = ""
 
     for _, row in exemplos.iterrows():
-
         historico += (
             f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
             f'Punição: {row["Punição aplicada"]}\n\n'
@@ -127,12 +122,14 @@ Texto:
 Assinante:
 {assinante}
 
---- FORMATO DA RESPOSTA ---
-Responda em no máximo 3 linhas.
-Use exatamente:
-Recomendo **[PUNIÇÃO]** pois [explicação humana, objetiva e curta].
-"""
+--- FORMATO DA RESPOSTA (REGRA CRÍTICA ANTI-CENSURA) ---
+1. Responda em no máximo 3 linhas.
+2. É ESTRITAMENTE PROIBIDO repetir qualquer palavrão, xingamento ou ofensa enviada pelo usuário na sua resposta. Se você repetir, o sistema será bloqueado.
+3. Descreva o motivo usando apenas termos técnicos e clínicos (Ex: "pois o jogador utilizou um termo animal pejorativo acompanhado de ofensa", "pois o jogador proferiu ofensa regional", etc).
 
+Use exatamente a estrutura abaixo:
+Recomendo **[PUNIÇÃO]** pois [explicação estritamente técnica, objetiva e SEM PALAVRÕES].
+"""
     return prompt
 
 with st.form("formulario"):
@@ -151,27 +148,17 @@ with st.form("formulario"):
     )
 
 if enviar:
-
     if not texto_report.strip():
-
-        st.warning(
-            "Cole algum texto antes."
-        )
-
+        st.warning("Cole algum texto antes.")
     else:
-
-        with st.spinner(
-            "⚡ Zeus está analisando..."
-        ):
-
+        with st.spinner("⚡ Zeus está analisando..."):
             try:
-                # Filtros de segurança desligados para a IA não bloquear xingamentos
-                filtros_seguranca = {
-                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                }
+                filtros_seguranca = [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+                ]
 
                 prompt = construir_prompt(
                     df_casos,
@@ -184,45 +171,24 @@ if enviar:
                     safety_settings=filtros_seguranca,
                     generation_config={
                         "temperature": 0.25,
-                        "max_output_tokens": 120
+                        "max_output_tokens": 150
                     }
                 )
 
-                resposta_final = None
-
-                if response.candidates:
+                # Tratamento de erro seguro caso o Google bloqueie a resposta mesmo assim
+                try:
                     resposta_final = response.text
-
-                if not resposta_final:
-
-                    st.warning(
-                        "⚠️ O Gemini bloqueou automaticamente o conteúdo."
-                    )
-
-                else:
-
-                    st.success(
-                        "✅ Análise concluída!"
-                    )
-
-                    st.markdown(
-                        "### 📢 Recomendação do Zeus:"
-                    )
-
-                    st.write(
-                        resposta_final
-                    )
+                    
+                    st.success("✅ Análise concluída!")
+                    st.markdown("### 📢 Recomendação do Zeus:")
+                    st.write(resposta_final)
+                    
+                except ValueError:
+                    st.warning("⚠️ O sistema de segurança mestre do Google bloqueou esta análise por conter termos de ódio extremamente sensíveis. Neste caso isolado, analise manualmente.")
 
             except Exception as e:
-
-                st.error(
-                    "Erro ao processar análise."
-                )
-
+                st.error("Erro ao processar análise.")
                 st.code(str(e))
 
 st.divider()
-
-st.caption(
-    f"📊 Banco carregado: {len(df_casos)} casos."
-)
+st.caption(f"📊 Banco carregado: {len(df_casos)} casos.")

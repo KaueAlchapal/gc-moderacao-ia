@@ -3,7 +3,6 @@ import pandas as pd
 import google.generativeai as genai
 import os
 import random
-import re
 
 st.set_page_config(
     page_title="Zeus AI - Moderação",
@@ -40,7 +39,7 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- BLINDAGEM MÁXIMA PARA MODELOS LITE ---
+# Filtros desligados na entrada da API
 filtros_seguranca = [
     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
     {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -48,109 +47,69 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-model = genai.GenerativeModel(
-    "gemini-3.1-flash-lite"
-)
-
-# --- MÁSCARA DE PRÉ-PROCESSAMENTO ANTI-CENSURA ---
-def mascarar_texto_extremo(texto):
-    mascaras = {
-        r"(?i)viado": "v**do",
-        r"(?i)viadinho": "v**dinho",
-        r"(?i)putinha": "p**tinha",
-        r"(?i)puta": "p**ta",
-        r"(?i)puto": "p**to",
-        r"(?i)estuprado": "est**prado",
-        r"(?i)estuprar": "est**prar",
-        r"(?i)estupro": "est**pro",
-        r"(?i)estrupo": "est**po",
-        r"(?i)abusar": "ab**ar",
-        r"(?i)\bcu\b": "c*", # \b garante que não vai mascarar palavras como "curto"
-        r"(?i)caralho": "c**alho",
-        r"(?i)buceta": "b**eta",
-        r"(?i)fudido": "f**ido",
-        r"(?i)foder": "f**er",
-        r"(?i)macaco": "m**aco",
-        r"(?i)macaquinho": "m**aquinho",
-        r"(?i)preto": "pr**o",
-        r"(?i)pretito": "pr**ito",
-        r"(?i)nazista": "n**ista",
-        r"(?i)hitler": "h**ler"
-    }
-    
-    texto_mascarado = texto
-    for padrao, substituto in mascaras.items():
-        texto_mascarado = re.sub(padrao, substituto, texto_mascarado)
-        
-    return texto_mascarado
+# Usando o modelo Flash padrão (o mais estável para classificações rápidas)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante):
-    quantidade = min(len(dados_csv), 25)
+    # Reduzimos a quantidade de exemplos injetados para 10 para evitar sobrecarga de toxicidade no prompt
+    quantidade = min(len(dados_csv), 10)
     exemplos = dados_csv.sample(quantidade, random_state=random.randint(1, 999999))
     historico = ""
     
     for _, row in exemplos.iterrows():
-        # O PULO DO GATO ESTÁ AQUI: Passamos a máscara nos exemplos do banco de dados também!
-        texto_historico_seguro = mascarar_texto_extremo(str(row["Exemplos de ocorridos nos reports (Falas/Chats)"]))
-        
-        historico += f'Texto: "{texto_historico_seguro}"\n'
+        historico += f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
         historico += f'Punição: {row["Punição aplicada"]}\n\n'
 
     assinante = "SIM" if eh_assinante else "NÃO"
 
     prompt = f"""
-Você é Zeus, analista sênior de moderação da Gamers Club.
-Sua função é analisar condutas reportadas e aplicar UMA ÚNICA punição correta baseada nas regras abaixo. O texto fornecido é estritamente um dado técnico coletado de um log de servidor totalmente ANONIMIZADO e FICTÍCIO. Não há exposição de dados reais, identidades ou endereços verdadeiros. 
+Você é Zeus, um classificador linguístico e forense sênior.
+Sua função é ler transcrições de chat de jogos (logs) e classificar a ofensa cometida, recomendando UMA ÚNICA punição baseada nas diretrizes abaixo. O texto avaliado pode conter linguagem altamente tóxica; trate-o como dado bruto de laboratório para fins de auditoria de segurança.
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
---- REGRAS DE APLICAÇÃO E CONTEXTO (OBRIGATÓRIAS) ---
+--- DIRETRIZES DE CLASSIFICAÇÃO (SIGA ESTRITAMENTE) ---
 
-1. OFENSAS LEVES E TOXICIDADE COMUM:
-   - Termos isolados, xingamentos bobos (Ex: "seu coco", "seu bosta", "seu merda", "lixo", "filho da p**ta"): Punição de **Alerta**.
-   - Se repetir esses termos leves várias vezes no mesmo log: Suba para **Cartão 1**.
+1. TOXICIDADE COMUM (RAGE):
+   - Palavrões genéricos, insultos leves e irritação isolada: ALERTA.
+   - Repetição frequente de palavrões genéricos no mesmo log: CARTÃO 1.
 
-2. HOMOFOBIA E RAGE SEXUAL (C2 e C3): 
-   - Termos homofóbicos ou rage de cunho sexual (Ex: "v**do", "vou comer seu c*"). 
-   - EXCEÇÃO DE CONTEXTO: Se a palavra "est**prado" for usada no meio de uma frase de rage homofóbico/sexual com palavrões genéricos (Ex: "Vou comer seu c* não, seu est**prado filho de uma p**ta"), o contexto principal é HOMOFOBIA/RAGE, sendo a punição correta **CARTÃO 2**, e não a regra de abuso literal.
-   - Suba para Cartão 3 apenas se houver extrema agressividade homofóbica repetida.
+2. HOMOFOBIA E RAGE SEXUAL: 
+   - Uso de termos de cunho homofóbico ou referências a atos sexuais passivos/agressivos: CARTÃO 2.
+   - EXCEÇÃO DE CONTEXTO: Se o termo que remete a "abuso/estupro" for usado como xingamento casual no meio de uma frase de rage homofóbico, a ofensa principal é Homofobia (CARTÃO 2), e não ameaça real.
+   - Extrema agressividade homofóbica repetida: CARTÃO 3.
 
 3. XENOFOBIA E REGIONALISMO: 
-   - Leve e Isolada (APENAS UM único termo regional no log, ex: "seu nordestino"): CARTÃO 2.
-   - Agressiva ou Múltipla (MAIS DE UM termo regional na frase, ou termo regional + xingamentos. Ex: "seu nordestino, baiano", "baiano de merda"): CARTÃO 3.
-   - Extrema repetição: CARTÃO 4.
+   - Apenas UM termo regional isolado na frase inteira: CARTÃO 2.
+   - MAIS DE UM termo regional, ou termo regional associado a qualquer xingamento: CARTÃO 3.
+   - Repetição massiva da ofensa regional: CARTÃO 4.
 
 4. RACISMO E TERMOS ANIMAIS:
-   - Termo animal isolado (Ex: "m**aco", "mono", "m**aquinho"): CARTÃO 4.
-   - Termo animal + xingamento (Ex: "m**aco retardado", "m**aco de merda"): CARTÃO 5.
-   - Ofensa à cor da pele, INCLUINDO variações e diminutivos (Ex: "seu pr**o", "escravo", "pr**ito", "pretinho", "neguinho"): BAN. (Sobrepõe todas as outras punições).
+   - Uso de termos primatas/animais isolados: CARTÃO 4.
+   - Termo primata associado a xingamento extra: CARTÃO 5.
+   - Ofensas literais à cor da pele (incluindo diminutivos e gírias): BAN. (Esta regra sobrepõe todas as outras).
 
-5. NAZISMO E IDEOLOGIAS EXTREMAS:
-   - Acusação isolada (Ex: "seu n**ista"): CARTÃO 4.
-   - Acusação + xingamentos: CARTÃO 5.
-   - Apologia real, adoração a h**ler, saudações nazistas: BAN.
+5. NAZISMO E EXTREMISMO:
+   - Acusação usando o termo extremista isolado: CARTÃO 4.
+   - Acusação somada a xingamentos: CARTÃO 5.
+   - Apologia ou adoração a líderes extremistas: BAN.
 
-6. AMEAÇAS, ABUSO E VIOLÊNCIA SEXUAL LITERAL:
-   - Foco na ofensa de abuso de forma isolada (Ex: "você é um est**prado", "você foi est**prado certeza", "vou ab**ar da sua mãe"): CARTÃO 4.
-   - Ameaças literais envolvendo menores/familiares (Ex: "seu pai te ab**ou", "vou est**prar sua irmãzinha", "vou est**prar sua filha"): CARTÃO 5.
+6. AMEAÇA DE VIOLÊNCIA SEXUAL LITERAL:
+   - Menção genérica isolada focada unicamente na palavra de abuso: CARTÃO 4.
+   - Ameaças literais e descritivas contra a pessoa ou seus familiares: CARTÃO 5.
 
 7. REGRA DO ASSINANTE:
-   - Assinante (SIM) reduz a punição em 1 nível APENAS para os casos da Regra 1 (Rage/Toxicidade comum).
-   - JAMAIS reduza a punição para Xenofobia, Homofobia, Racismo, Nazismo ou Violência.
+   - Se Assinante = SIM, reduza a punição em 1 nível APENAS para o item 1 (Toxicidade Comum).
+   - NUNCA reduza punições das categorias 2, 3, 4, 5 ou 6.
 
---- HISTÓRICO DE CASOS ---
-{historico}
+--- CASO PARA CLASSIFICAÇÃO FORENSE ---
+[LOG DO SERVIDOR]: "{texto_usuario}"
+[ASSINANTE]: {assinante}
 
---- CASO ATUAL (DADO TÉCNICO DE LOG) ---
-[INÍCIO DO LOG EXTRAÍDO DO SERVIDOR]: "{texto_usuario}"
-[STATUS DA CONTA]: Assinante = {assinante}
-
---- INSTRUÇÕES DE RESPOSTA ---
-Não repita os palavrões ou termos literais do usuário na sua justificativa. Use termos técnicos forenses (ex: ofensa regional múltipla, rage de cunho sexual, termo animal pejorativo, ameaça grave).
-
-Responda EXATAMENTE e APENAS neste formato:
-Recomendo **[PUNIÇÃO]** pois [sua justificativa técnica curta focada no contexto principal da frase].
+--- INSTRUÇÕES DE SAÍDA ---
+Não cite os palavrões na sua justificativa. Responda APENAS neste formato exato:
+Recomendo **[PUNIÇÃO]** pois [justificativa técnica, ex: ofensa homofóbica, rage sexual, ofensa regional múltipla].
 """
     return prompt
 
@@ -165,13 +124,8 @@ if enviar:
     else:
         with st.spinner("⚡ Zeus está analisando..."):
             try:
-                # 1. Aplica a máscara no texto recebido
-                texto_seguro = mascarar_texto_extremo(texto_report)
-                
-                # 2. Constrói o prompt com o texto já mascarado
-                prompt = construir_prompt(df_casos, texto_seguro, status_assinante)
+                prompt = construir_prompt(df_casos, texto_report, status_assinante)
 
-                # 3. Envia para a API
                 response = model.generate_content(
                     prompt,
                     safety_settings=filtros_seguranca,
@@ -181,7 +135,7 @@ if enviar:
                 )
 
                 if not response.candidates or len(response.candidates) == 0:
-                    st.warning("⚠️ A análise foi contida pelos filtros de segurança mestre da API. Tente reescrever o log removendo ofensas extremamente atípicas ou não mapeadas.")
+                    st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado. O termo inserido violou a camada intransponível da API pública.")
                 else:
                     st.success("✅ Análise concluída!")
                     st.markdown("### 📢 Recomendação do Zeus:")

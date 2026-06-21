@@ -90,7 +90,10 @@ def construir_prompt(dados_csv, texto_usuario, eh_assinante):
     historico = ""
     
     for _, row in exemplos.iterrows():
-        historico += f'Texto: "{row["Exemplos de ocorridos nos reports (Falas/Chats)"]}"\n'
+        # O PULO DO GATO ESTÁ AQUI: Passamos a máscara nos exemplos do banco de dados também!
+        texto_historico_seguro = mascarar_texto_extremo(str(row["Exemplos de ocorridos nos reports (Falas/Chats)"]))
+        
+        historico += f'Texto: "{texto_historico_seguro}"\n'
         historico += f'Punição: {row["Punição aplicada"]}\n\n'
 
     assinante = "SIM" if eh_assinante else "NÃO"

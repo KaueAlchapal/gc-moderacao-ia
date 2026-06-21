@@ -3,6 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import os
 import random
+import re
 
 st.set_page_config(
     page_title="Zeus AI - Moderação",
@@ -51,6 +52,38 @@ model = genai.GenerativeModel(
     "gemini-3.1-flash-lite"
 )
 
+# --- MÁSCARA DE PRÉ-PROCESSAMENTO ANTI-CENSURA ---
+def mascarar_texto_extremo(texto):
+    mascaras = {
+        r"(?i)viado": "v**do",
+        r"(?i)viadinho": "v**dinho",
+        r"(?i)putinha": "p**tinha",
+        r"(?i)puta": "p**ta",
+        r"(?i)puto": "p**to",
+        r"(?i)estuprado": "est**prado",
+        r"(?i)estuprar": "est**prar",
+        r"(?i)estupro": "est**pro",
+        r"(?i)estrupo": "est**po",
+        r"(?i)abusar": "ab**ar",
+        r"(?i)\bcu\b": "c*", # \b garante que não vai mascarar palavras como "curto"
+        r"(?i)caralho": "c**alho",
+        r"(?i)buceta": "b**eta",
+        r"(?i)fudido": "f**ido",
+        r"(?i)foder": "f**er",
+        r"(?i)macaco": "m**aco",
+        r"(?i)macaquinho": "m**aquinho",
+        r"(?i)preto": "pr**o",
+        r"(?i)pretito": "pr**ito",
+        r"(?i)nazista": "n**ista",
+        r"(?i)hitler": "h**ler"
+    }
+    
+    texto_mascarado = texto
+    for padrao, substituto in mascaras.items():
+        texto_mascarado = re.sub(padrao, substituto, texto_mascarado)
+        
+    return texto_mascarado
+
 def construir_prompt(dados_csv, texto_usuario, eh_assinante):
     quantidade = min(len(dados_csv), 25)
     exemplos = dados_csv.sample(quantidade, random_state=random.randint(1, 999999))
@@ -72,12 +105,12 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 --- REGRAS DE APLICAÇÃO E CONTEXTO (OBRIGATÓRIAS) ---
 
 1. OFENSAS LEVES E TOXICIDADE COMUM:
-   - Termos isolados, xingamentos bobos (Ex: "seu coco", "seu bosta", "seu merda", "lixo", "filho da puta"): Punição de **Alerta**.
+   - Termos isolados, xingamentos bobos (Ex: "seu coco", "seu bosta", "seu merda", "lixo", "filho da p**ta"): Punição de **Alerta**.
    - Se repetir esses termos leves várias vezes no mesmo log: Suba para **Cartão 1**.
 
 2. HOMOFOBIA E RAGE SEXUAL (C2 e C3): 
-   - Termos homofóbicos ou rage de cunho sexual (Ex: "viado", "vou comer seu cu"). 
-   - EXCEÇÃO DE CONTEXTO: Se a palavra "estuprado" for usada no meio de uma frase de rage homofóbico/sexual com palavrões genéricos (Ex: "Vou comer seu cu não, seu estuprado filho de uma puta"), o contexto principal é HOMOFOBIA/RAGE, sendo a punição correta **CARTÃO 2**, e não a regra de abuso literal.
+   - Termos homofóbicos ou rage de cunho sexual (Ex: "v**do", "vou comer seu c*"). 
+   - EXCEÇÃO DE CONTEXTO: Se a palavra "est**prado" for usada no meio de uma frase de rage homofóbico/sexual com palavrões genéricos (Ex: "Vou comer seu c* não, seu est**prado filho de uma p**ta"), o contexto principal é HOMOFOBIA/RAGE, sendo a punição correta **CARTÃO 2**, e não a regra de abuso literal.
    - Suba para Cartão 3 apenas se houver extrema agressividade homofóbica repetida.
 
 3. XENOFOBIA E REGIONALISMO: 
@@ -86,18 +119,18 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Extrema repetição: CARTÃO 4.
 
 4. RACISMO E TERMOS ANIMAIS:
-   - Termo animal isolado (Ex: "macaco", "mono", "macaquinho"): CARTÃO 4.
-   - Termo animal + xingamento (Ex: "macaco retardado", "macaco de merda"): CARTÃO 5.
-   - Ofensa à cor da pele, INCLUINDO variações e diminutivos (Ex: "seu preto", "escravo", "pretito", "pretinho", "neguinho"): BAN. (Sobrepõe todas as outras punições).
+   - Termo animal isolado (Ex: "m**aco", "mono", "m**aquinho"): CARTÃO 4.
+   - Termo animal + xingamento (Ex: "m**aco retardado", "m**aco de merda"): CARTÃO 5.
+   - Ofensa à cor da pele, INCLUINDO variações e diminutivos (Ex: "seu pr**o", "escravo", "pr**ito", "pretinho", "neguinho"): BAN. (Sobrepõe todas as outras punições).
 
 5. NAZISMO E IDEOLOGIAS EXTREMAS:
-   - Acusação isolada (Ex: "seu nazista"): CARTÃO 4.
+   - Acusação isolada (Ex: "seu n**ista"): CARTÃO 4.
    - Acusação + xingamentos: CARTÃO 5.
-   - Apologia real, adoração a Hitler, saudações nazistas: BAN.
+   - Apologia real, adoração a h**ler, saudações nazistas: BAN.
 
 6. AMEAÇAS, ABUSO E VIOLÊNCIA SEXUAL LITERAL:
-   - Foco na ofensa de estupro de forma isolada (Ex: "você é um estuprado", "você foi estuprado certeza", "vou abusar da sua mãe"): CARTÃO 4.
-   - Ameaças literais envolvendo menores/familiares (Ex: "seu pai te abusou", "vou estuprar sua irmãzinha", "vou estuprar sua filha"): CARTÃO 5.
+   - Foco na ofensa de abuso de forma isolada (Ex: "você é um est**prado", "você foi est**prado certeza", "vou ab**ar da sua mãe"): CARTÃO 4.
+   - Ameaças literais envolvendo menores/familiares (Ex: "seu pai te ab**ou", "vou est**prar sua irmãzinha", "vou est**prar sua filha"): CARTÃO 5.
 
 7. REGRA DO ASSINANTE:
    - Assinante (SIM) reduz a punição em 1 nível APENAS para os casos da Regra 1 (Rage/Toxicidade comum).
@@ -129,8 +162,13 @@ if enviar:
     else:
         with st.spinner("⚡ Zeus está analisando..."):
             try:
-                prompt = construir_prompt(df_casos, texto_report, status_assinante)
+                # 1. Aplica a máscara no texto recebido
+                texto_seguro = mascarar_texto_extremo(texto_report)
+                
+                # 2. Constrói o prompt com o texto já mascarado
+                prompt = construir_prompt(df_casos, texto_seguro, status_assinante)
 
+                # 3. Envia para a API
                 response = model.generate_content(
                     prompt,
                     safety_settings=filtros_seguranca,
@@ -140,7 +178,7 @@ if enviar:
                 )
 
                 if not response.candidates or len(response.candidates) == 0:
-                    st.warning("⚠️ A análise foi contida pelos filtros de segurança mestre da API. O Google bloqueou o termo na raiz por violar políticas irrevogáveis de violência. Tente reescrever o log removendo a ofensa mais explícita para o sistema conseguir ler.")
+                    st.warning("⚠️ A análise foi contida pelos filtros de segurança mestre da API. Tente reescrever o log removendo ofensas extremamente atípicas ou não mapeadas.")
                 else:
                     st.success("✅ Análise concluída!")
                     st.markdown("### 📢 Recomendação do Zeus:")

@@ -48,7 +48,7 @@ filtros_seguranca = [
 ]
 
 # Usando o modelo Flash padrão (o mais estável para classificações rápidas)
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-3.1-flash-lite")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante):
     # Reduzimos a quantidade de exemplos injetados para 10 para evitar sobrecarga de toxicidade no prompt

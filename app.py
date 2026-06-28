@@ -86,14 +86,14 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - EXCEÇÃO: Termos de abuso usados como rage casual ("seu estuprado do caralho","estuprado") são Cartão 2 (Homofobia), não ameaça literal. Mesmo que venha acompanhado de xingamentos comuns (como filho da puta), a punição unificada deve ser CARTÃO 2.
    - Extrema agressividade homofóbica repetida: CARTÃO 3.
 
-3. XENOFOBIA E REGIONALISMO (APENAS OFENSAS EXPLÍCITAS): 
-   - Requer o uso EXPLÍCITO de gentílicos ou nomes de regiões (Ex: nordestino, baiano, paulista, sulista). Se não tiver o nome da região, enquadre na Regra 1.
-   - UM termo regional isolado e explícito: CARTÃO 2.
-   - MAIS DE UM termo regional explícito ou termo + xingamento: CARTÃO 3.
-   - Repetição massiva: CARTÃO 4.
+3. XENOFOBIA, REGIONALISMO E PRECONCEITO SOCIAL (OFENSAS EXPLÍCITAS): 
+   - Requer ofensa EXPLÍCITA a regiões (nordestino, baiano, paulista) ou termos de preconceito social/classe (Ex: favelado, faveladinha).
+   - UM termo isolado e explícito: CARTÃO 2.
+   - DOIS termos ou termo associado a xingamento comum (Ex: "favelado de merda"): CARTÃO 3.
+   - REPETIÇÃO MASSIVA (O termo é repetido 3 ou mais vezes no mesmo log) OU associação direta com falas de supremacia (Ex: "raça inferior", "sub-raça"): CARTÃO 4.
 
 4. RACISMO E ATRIBUTOS FÍSICOS:
-   - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspectofísico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
+   - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspecto físico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
    - Termos primatas/animais relacionados a macacos isolados: CARTÃO 4.
    - Termo primata associado a xingamento extra (Ex: "seu macaco do caralho","macaquinho de merda") : CARTÃO 5.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.

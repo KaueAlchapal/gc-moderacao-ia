@@ -98,7 +98,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 5. REGRA ESPECIAL DE AMBIGUIDADE DE POSIÇÃO ("ESCURO"):
    - Toda vez que a palavra "escuro" for usada no sentido de local/direção, é ESTRITAMENTE PROIBIDO inventar uma justificativa. VOCÊ DEVE COPIAR E COLAR A RESPOSTA ABAIXO:
-     Recomendo **[Sem Punição / BAN]** pois o termo foi usado como posição. Se a partida foi na Dust 2, Ancient ou Inferno, é comunicação normal (Sem Punição). Se foi em outro mapa, configura racismo camuflado (BAN).
+     Recomendo **[Sem Punição / BAN]** pois o termo "escuro" foi usado como posição. Se a partida foi na Dust 2, Ancient ou Inferno, é comunicação normal. Se foi em outro mapa, configura racismo camuflado (BAN).
 
 6. NAZISMO E EXTREMISMO:
    - Acusação usando termo extremista isolado: CARTÃO 4.
@@ -117,8 +117,13 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 [ASSINANTE]: {assinante}
 
 --- INSTRUÇÕES DE SAÍDA ---
-Não cite os palavrões na sua justificativa. Responda APENAS neste formato exato (ou no formato duplo da Regra 5 se houver ambiguidade de mapa):
-Recomendo **[PUNIÇÃO]** pois [justificativa técnica indicando a infração].
+Não cite os palavrões na sua justificativa. Não use palavras de ligação como "Adicionalmente". 
+Se o log contiver apenas uma infração, responda nesta linha única:
+Recomendo **[PUNIÇÃO]** pois [justificativa].
+
+Se o log contiver MÚLTIPLAS infrações (ex: Regra 5 + Toxicidade comum), liste CADA UMA em uma linha separada, pulando uma linha entre elas, neste formato exato:
+Recomendo **[PUNIÇÃO 1]** pois [justificativa 1].
+Recomendo **[PUNIÇÃO 2]** pois [justificativa 2].
 """
     return prompt
 

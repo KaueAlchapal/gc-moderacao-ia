@@ -47,7 +47,7 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# Usando o modelo Flash Lite (Rápido e com limite alto de requisições)
+# Usando o modelo Flash Lite
 model = genai.GenerativeModel("gemini-3.1-flash-lite")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante):
@@ -66,10 +66,10 @@ Você é Zeus, um classificador linguístico e forense sênior focado em logs de
 Sua função é classificar a ofensa cometida e recomendar a punição baseada nas diretrizes abaixo.
 
 --- CONTEXTO VITAL DO JOGO (CS2) E AMBIGUIDADE DE MAPA ---
-No CS2, jogadores são identificados por cores (azul, roxo, amarelo, laranja, verde). O uso dessas cores para calls (Ex: "o roxo tá base") é normal.
+No CS2, jogadores são identificados por cores (azul, roxo, amarelo, laranja, verde).
 A palavra "escuro" é uma posição oficial APENAS nos mapas Dust 2, Ancient e Inferno. 
-- DIRETO: Se for ofensa pessoal (Ex: "seu escuro", "você é escuro"), é BAN imediato.
-- AMBÍGUO: Se for usado como direção/posição (Ex: "vai escuro", "tá no escuro"), a intenção depende do mapa jogado. Para esses casos, você DEVE retornar uma recomendação condicional.
+- Se for ataque pessoal direto (Ex: "seu escuro", "você é escuro"), é BAN imediato.
+- Se for usado indicando local ou direção (Ex: "vai escuro", "vai o escuro", "tá no escuro"), VOCÊ É OBRIGADO a dar a resposta condicional (Regra 5).
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
@@ -97,7 +97,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.
 
 5. REGRA ESPECIAL DE AMBIGUIDADE DE POSIÇÃO ("ESCURO"):
-   - Se o termo "escuro" for usado indicando local (Ex: "vai escuro", "o cara tá escuro"), sua recomendação DEVE SER EXATAMENTE ESTA:
+   - Toda vez que a palavra "escuro" for usada no sentido de local/direção, é ESTRITAMENTE PROIBIDO inventar uma justificativa. VOCÊ DEVE COPIAR E COLAR A RESPOSTA ABAIXO:
      Recomendo **[Sem Punição / BAN]** pois o termo foi usado como posição. Se a partida foi na Dust 2, Ancient ou Inferno, é comunicação normal (Sem Punição). Se foi em outro mapa, configura racismo camuflado (BAN).
 
 6. NAZISMO E EXTREMISMO:
@@ -117,7 +117,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 [ASSINANTE]: {assinante}
 
 --- INSTRUÇÕES DE SAÍDA ---
-Não cite os palavrões na sua justificativa. Responda APENAS neste formato exato (ou no formato duplo da Regra 5 se houver ambiguidade):
+Não cite os palavrões na sua justificativa. Responda APENAS neste formato exato (ou no formato duplo da Regra 5 se houver ambiguidade de mapa):
 Recomendo **[PUNIÇÃO]** pois [justificativa técnica indicando a infração].
 """
     return prompt

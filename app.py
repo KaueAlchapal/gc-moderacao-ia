@@ -68,8 +68,8 @@ Sua função é classificar a ofensa cometida e recomendar a punição baseada n
 --- CONTEXTO VITAL DO JOGO (CS2) E AMBIGUIDADE DE MAPA ---
 No CS2, jogadores são identificados por cores (azul, roxo, amarelo, laranja, verde).
 A palavra "escuro" é uma posição oficial APENAS nos mapas Dust 2, Ancient e Inferno. 
-- Se for ataque pessoal direto (Ex: "seu escuro", "você é escuro"), é BAN imediato.
-- Se for usado indicando local ou direção (Ex: "vai escuro", "vai o escuro", "tá no escuro"), VOCÊ É OBRIGADO a dar a resposta condicional (Regra 5).
+- Se for ataque pessoal direto (Ex: "seu escuro", "você é escuro"), é BAN imediato por racismo.
+- Se for usado indicando local ou direção (Ex: "vai escuro", "vai o escuro", "tá no escuro"), VOCÊ É OBRIGADO a usar o formato de resposta conectada da Regra 5.
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
@@ -97,8 +97,10 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.
 
 5. REGRA ESPECIAL DE AMBIGUIDADE DE POSIÇÃO ("ESCURO"):
-   - Toda vez que a palavra "escuro" for usada no sentido de local/direção, é ESTRITAMENTE PROIBIDO inventar uma justificativa. VOCÊ DEVE COPIAR E COLAR A RESPOSTA ABAIXO:
-     Recomendo **[Sem Punição / BAN]** pois o termo "escuro" foi usado como posição. Se a partida foi na Dust 2, Ancient ou Inferno, é comunicação normal. Se foi em outro mapa, configura racismo camuflado (BAN).
+   - Toda vez que a palavra "escuro" for usada no sentido de local/direção, siga EXATAMENTE esta estrutura conectada em linhas separadas:
+     Recomendo **BAN** pois o termo configura racismo camuflado se usado fora do contexto geográfico.
+     Entretanto, caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno, **NÃO RECOMENDO PUNIÇÃO** pelo termo, pois configura comunicação normal de jogo.
+     [USE ESTA 3ª LINHA APENAS SE HOUVER OUTRO XINGAMENTO]: Ainda assim, recomendo **[PUNIÇÃO DO XINGAMENTO]** pois [justifique o outro xingamento extra, ex: o jogador utilizou insulto genérico].
 
 6. NAZISMO E EXTREMISMO:
    - Acusação usando termo extremista isolado: CARTÃO 4.
@@ -117,13 +119,10 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 [ASSINANTE]: {assinante}
 
 --- INSTRUÇÕES DE SAÍDA ---
-Não cite os palavrões na sua justificativa. Não use palavras de ligação como "Adicionalmente". 
-Se o log contiver apenas uma infração, responda nesta linha única:
-Recomendo **[PUNIÇÃO]** pois [justificativa].
-
-Se o log contiver MÚLTIPLAS infrações (ex: Regra 5 + Toxicidade comum), liste CADA UMA em uma linha separada, pulando uma linha entre elas, neste formato exato:
-Recomendo **[PUNIÇÃO 1]** pois [justificativa 1].
-Recomendo **[PUNIÇÃO 2]** pois [justificativa 2].
+Não cite os palavrões na sua justificativa. Não use palavras de ligação soltas (como "Adicionalmente"). 
+- Se for a REGRA 5 ("escuro" como posição): Siga a estrutura conectada exata ensinada na Regra 5.
+- Para todos os outros casos: Responda em formato padrão de linha única (Recomendo **[PUNIÇÃO]** pois [justificativa]).
+- Para múltiplos xingamentos COMUNS (sem a regra 5): Liste cada punição em uma linha separada.
 """
     return prompt
 

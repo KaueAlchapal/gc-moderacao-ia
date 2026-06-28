@@ -76,31 +76,33 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 --- DIRETRIZES DE CLASSIFICAÇÃO (SIGA ESTRITAMENTE) ---
 
-1. TOXICIDADE COMUM (RAGE):
+1. TOXICIDADE COMUM (RAGE) E ESTEREÓTIPOS INDIRETOS:
    - Palavrões genéricos e insultos leves (Ex: "lixo", "merda"): ALERTA.
-   - Repetição frequente de palavrões genéricos: CARTÃO 1.
+   - Frases com estereótipos culturais/regionais INDIRETOS, SEM citar o nome do estado/região (Ex: "vai quebrar coco", "caçar camaleão", "comer calango", "comer pão de queijo"): ALERTA.
+   - Repetição frequente desses termos (xingamentos ou estereótipos indiretos): CARTÃO 1.
 
 2. HOMOFOBIA E RAGE SEXUAL: 
    - Uso de termos homofóbicos ou rage sexual passivo/agressivo: CARTÃO 2.
-   - EXCEÇÃO: Termos de abuso usados como rage casual ("seu estuprado do caralho") são Cartão 2 (Homofobia), não ameaça literal.
+   - EXCEÇÃO: Termos de abuso usados como rage casual ("seu estuprado do caralho","estuprado") são Cartão 2 (Homofobia), não ameaça literal.
    - Extrema agressividade homofóbica repetida: CARTÃO 3.
 
-3. XENOFOBIA E REGIONALISMO: 
-   - UM termo regional isolado: CARTÃO 2.
-   - MAIS DE UM termo regional ou termo + xingamento: CARTÃO 3.
+3. XENOFOBIA E REGIONALISMO (APENAS OFENSAS EXPLÍCITAS): 
+   - Requer o uso EXPLÍCITO de gentílicos ou nomes de regiões (Ex: nordestino, baiano, paulista, sulista). Se não tiver o nome da região, enquadre na Regra 1.
+   - UM termo regional isolado e explícito: CARTÃO 2.
+   - MAIS DE UM termo regional explícito ou termo + xingamento: CARTÃO 3.
    - Repetição massiva: CARTÃO 4.
 
 4. RACISMO E ATRIBUTOS FÍSICOS:
-   - Ofensa baseada na cor branca ou aspecto físico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 2.
-   - Termos primatas/animais isolados: CARTÃO 4.
-   - Termo primata associado a xingamento extra: CARTÃO 5.
+   - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspecto físico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
+   - Termos primatas/animais relacionados a macacos isolados: CARTÃO 4.
+   - Termo primata associado a xingamento extra (Ex: "seu macaco do caralho","macaquinho de merda") : CARTÃO 5.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.
 
 5. REGRA ESPECIAL DE AMBIGUIDADE DE POSIÇÃO ("ESCURO"):
    - Toda vez que a palavra "escuro" for usada no sentido de local/direção, siga EXATAMENTE esta estrutura conectada em linhas separadas:
      Recomendo **BAN** pois o termo configura racismo camuflado se usado fora do contexto geográfico.
      Entretanto, caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno, **NÃO RECOMENDO PUNIÇÃO** pelo termo, pois configura comunicação normal de jogo.
-     [USE ESTA 3ª LINHA APENAS SE HOUVER OUTRO XINGAMENTO]: Ainda assim, recomendo **[PUNIÇÃO DO XINGAMENTO]** pois [justifique o outro xingamento extra, ex: o jogador utilizou insulto genérico].
+     [USE ESTA 3ª LINHA APENAS SE HOUVER OUTRO XINGAMENTO]: Ainda assim, recomendo **[PUNIÇÃO DO XINGAMENTO]** pois [justifique o outro xingamento extra].
 
 6. NAZISMO E EXTREMISMO:
    - Acusação usando termo extremista isolado: CARTÃO 4.
@@ -108,8 +110,8 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Apologia literal: BAN.
 
 7. AMEAÇA DE VIOLÊNCIA SEXUAL LITERAL:
-   - Menção isolada focada na palavra de abuso: CARTÃO 4.
-   - Ameaças literais contra a pessoa ou familiares: CARTÃO 5.
+   - Menção isolada focada na palavra de abuso (Ex: "seu pai deve ter te estuprado","foi abusado quando era criança"): CARTÃO 4.
+   - Ameaças literais contra a pessoa ou familiares(Ex: "sua irmãzinha vai ser abusada","vou estuprar sua mãe"): CARTÃO 5.
 
 8. REGRA DO ASSINANTE:
    - Se Assinante = SIM, reduza a punição em 1 nível APENAS para o item 1 (Toxicidade Comum).

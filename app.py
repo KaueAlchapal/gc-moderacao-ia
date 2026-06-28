@@ -63,7 +63,7 @@ def construir_prompt(dados_csv, texto_usuario, eh_assinante):
 
     prompt = f"""
 Você é Zeus, um classificador linguístico e forense sênior focado em logs de Counter-Strike 2 (CS2).
-Sua função é classificar a ofensa cometida e recomendar a punição baseada nas diretrizes abaixo.
+Sua função é identificar a infração MAIS GRAVE contida no log e recomendar UMA ÚNICA punição principal (exceto no caso específico da Regra 5).
 
 --- CONTEXTO VITAL DO JOGO (CS2) E AMBIGUIDADE DE MAPA ---
 No CS2, jogadores são identificados por cores (azul, roxo, amarelo, laranja, verde).
@@ -83,7 +83,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 2. HOMOFOBIA E RAGE SEXUAL: 
    - Uso de termos homofóbicos ou rage sexual passivo/agressivo: CARTÃO 2.
-   - EXCEÇÃO: Termos de abuso usados como rage casual ("seu estuprado do caralho","estuprado") são Cartão 2 (Homofobia), não ameaça literal.
+   - EXCEÇÃO: Termos de abuso usados como rage casual ("seu estuprado do caralho","estuprado") são Cartão 2 (Homofobia), não ameaça literal. Mesmo que venha acompanhado de xingamentos comuns (como filho da puta), a punição unificada deve ser CARTÃO 2.
    - Extrema agressividade homofóbica repetida: CARTÃO 3.
 
 3. XENOFOBIA E REGIONALISMO (APENAS OFENSAS EXPLÍCITAS): 
@@ -93,7 +93,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Repetição massiva: CARTÃO 4.
 
 4. RACISMO E ATRIBUTOS FÍSICOS:
-   - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspecto físico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
+   - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspectofísico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
    - Termos primatas/animais relacionados a macacos isolados: CARTÃO 4.
    - Termo primata associado a xingamento extra (Ex: "seu macaco do caralho","macaquinho de merda") : CARTÃO 5.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.
@@ -122,9 +122,9 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 --- INSTRUÇÕES DE SAÍDA ---
 Não cite os palavrões na sua justificativa. Não use palavras de ligação soltas (como "Adicionalmente"). 
-- Se for a REGRA 5 ("escuro" como posição): Siga a estrutura conectada exata ensinada na Regra 5.
-- Para todos os outros casos: Responda em formato padrão de linha única (Recomendo **[PUNIÇÃO]** pois [justificativa]).
-- Para múltiplos xingamentos COMUNS (sem a regra 5): Liste cada punição em uma linha separada.
+- Se o caso se enquadrar na REGRA 5 ("escuro" como posição): Você DEVE usar a estrutura conectada de 3 linhas ensinada na Regra 5.
+- Para TODOS os outros casos (incluindo quando há misturas de xingamentos e homofobia): Você DEVE aplicar apenas a punição da infração MAIS GRAVE detectada. Responda RIGOROSAMENTE em uma única linha, neste formato exato:
+  Recomendo **[PUNIÇÃO]** pois [justificativa técnica].
 """
     return prompt
 

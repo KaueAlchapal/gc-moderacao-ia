@@ -4,7 +4,7 @@ Salve, família!
 
 Apresento o **Zeus**, o nosso Assistente de Inteligência Artificial criado para apoiar o time de CX (Community Experience).
 
-Sabemos que analisar logs de chat e denúncias pode ser cansativo e repetitivo. O objetivo do Zeus não é substituir o julgamento humano (a palavra final é sempre sua!), mas sim atuar como um "colega de bancada" super rápido. Ele lê as denúncias, cruza com as nossas regras internas e sugere a punição mais justa em segundos, ajudando a padronizar as nossas decisões.
+O objetivo do Zeus não é substituir o julgamento humano (a palavra final é sempre sua!), mas sim atuar como um "colega analista" super rápido. Ele lê as denúncias, cruza com as nossas regras internas e sugere a punição mais justa em segundos, ajudando a padronizar as nossas decisões.
 
 # Como o Zeus pensa?
 Ele foi treinado para seguir rigorosamente as nossas **Regras de Ouro**, incluindo:
@@ -19,6 +19,6 @@ Ele foi treinado para seguir rigorosamente as nossas **Regras de Ouro**, incluin
 Este projeto usa uma interface simples e a inteligência do Google (Gemini) nos bastidores. Temos apenas dois arquivos que importam para nós:
 
 * Arquivo `app.py`: É onde estão as regras lógicas e o código da IA. **Você não precisa mexer aqui.**
-* Arquivo `casos.csv`: É o nosso **Livro de Regras**! É literalmente uma planilha com o nosso histórico orgânico de punições. É lendo esse arquivo que o Zeus aprende como a nossa equipe modera.
+* Arquivo `casos.csv`: É o nosso **Livro de Regras**! É literalmente uma planilha com o nosso histórico orgânico de punições. É lendo esse arquivo que o Zeus aprende como a nossa equipe decide punições.
 
 *Desenvolvido para acelerar as análises e proteger a nossa comunidade.* 

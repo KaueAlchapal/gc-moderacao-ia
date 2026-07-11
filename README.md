@@ -1,6 +1,6 @@
  Zeus - IA Moderadora de CX
 
-Salve, família! 
+Olá!
 
 Apresento o **Zeus**, o nosso Assistente de Inteligência Artificial criado para apoiar o time de CX (Community Experience).
 

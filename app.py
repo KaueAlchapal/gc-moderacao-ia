@@ -50,7 +50,7 @@ filtros_seguranca = [
 # Usando o modelo Flash Lite
 model = genai.GenerativeModel("gemini-3.1-flash-lite")
 
-def construir_prompt(dados_csv, texto_usuario, eh_assinante):
+def construir_prompt(dados_csv, texto_usuario, eh_assinante, tipo_partida):
     quantidade = min(len(dados_csv), 10)
     exemplos = dados_csv.sample(quantidade, random_state=random.randint(1, 999999))
     historico = ""
@@ -69,7 +69,7 @@ Sua função é identificar a infração MAIS GRAVE contida no log e recomendar 
 No CS2, jogadores são identificados por cores (azul, roxo, amarelo, laranja, verde).
 A palavra "escuro" é uma posição oficial APENAS nos mapas Dust 2, Ancient e Inferno. 
 - Se for ataque pessoal direto (Ex: "seu escuro", "você é escuro"), é BAN imediato por racismo.
-- Se for usado indicando local ou direção (Ex: "vai escuro", "vai o escuro", "tá no escuro"), VOCÊ É OBRIGADO a usar o formato de resposta conectada da Regra 5.
+- Se for usado indicando local ou direção (Ex: "vai escuro", "tá no escuro"), VOCÊ É OBRIGADO a usar o formato de resposta conectada da Regra 5.
 
 --- TABELA DE PUNIÇÕES ---
 Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
@@ -77,7 +77,7 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 --- DIRETRIZES DE CLASSIFICAÇÃO (SIGA ESTRITAMENTE) ---
 
 1. TOXICIDADE COMUM (RAGE) E ESTEREÓTIPOS INDIRETOS:
-   - Palavrões genéricos e insultos leves (Ex: "lixo", "merda"): ALERTA.
+   - Palavrões genéricos e insultos leves (Ex: "lixo", "merda", "bundão", "horrível", "bot", "babaca", "filho da puta", "vai toma no cu"): ALERTA.
    - Frases com estereótipos culturais/regionais INDIRETOS, SEM citar o nome do estado/região (Ex: "vai quebrar coco", "caçar camaleão", "comer calango", "comer pão de queijo"): ALERTA.
    - Repetição frequente desses termos (xingamentos ou estereótipos indiretos): CARTÃO 1.
 
@@ -88,15 +88,16 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 
 3. XENOFOBIA, REGIONALISMO E PRECONCEITO SOCIAL (OFENSAS EXPLÍCITAS): 
    - Requer ofensa EXPLÍCITA a regiões (nordestino, baiano, paulista) ou termos de preconceito social/classe (Ex: favelado, faveladinha).
-   - UM termo isolado e explícito: CARTÃO 2.
-   - DOIS termos ou termo associado a xingamento comum (Ex: "favelado de merda"): CARTÃO 3.
-   - REPETIÇÃO MASSIVA (O termo é repetido 3 ou mais vezes no mesmo log) OU associação direta com falas de supremacia (Ex: "raça inferior", "sub-raça"): CARTÃO 4.
+   - UM termo isolado e explícito: CARTÃO 3.
+   - DOIS termos ou termo associado a xingamento comum (Ex: "favelado de merda", "favelado do caralho", "seu nordestino de merda", "nordestino sem agua", "sulista pobre"): CARTÃO 4.
+   - REPETIÇÃO MASSIVA (O termo é repetido 3 ou mais vezes no mesmo log) ou associação direta com falas de supremacia (Ex: "raça inferior", "sub-raça"): CARTÃO 5.
 
 4. RACISMO E ATRIBUTOS FÍSICOS:
    - Ofensa baseada exclusivamente e isoladamente na cor branca ou aspecto físico (Ex: "você é branco", "seu branco", "branquelo"): CARTÃO 1.
-   - Termos primatas/animais relacionados a macacos isolados: CARTÃO 4.
-   - Termo primata associado a xingamento extra (Ex: "seu macaco do caralho","macaquinho de merda") : CARTÃO 5.
+   - Termos primatas/animais relacionados a macacos isolados (Ex: "ta pulando igual um macaco", "você anda igual um macaco", "você pensa igual um macaco", "tá perdido igual um macaco", "joga igual um primata"): CARTÃO 5.
+   - Termo primata associado a xingamento extra (Ex: "seu macaco do caralho", "macaquinho de merda", "macaco fodido", "mono de mierda", "monito de mierda", "macaco de mierda") : BAN.
    - Direcionamento de ódio à cor da pele negra (Ex: "seu preto", "escravo", "pretito", ou ofensa direta de posição: "seu escuro", "você é escuro"): BAN.
+   - Capacitismo, menções a características físicas do jogador: CARTÃO 2.
 
 5. REGRA ESPECIAL DE AMBIGUIDADE DE POSIÇÃO ("ESCURO"):
    - Toda vez que a palavra "escuro" for usada no sentido de local/direção, siga EXATAMENTE esta estrutura conectada em linhas separadas:
@@ -109,28 +110,64 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
    - Acusação somada a xingamentos: CARTÃO 5.
    - Apologia literal: BAN.
 
-7. AMEAÇA DE VIOLÊNCIA SEXUAL LITERAL:
-   - Menção isolada focada na palavra de abuso (Ex: "seu pai deve ter te estuprado","foi abusado quando era criança"): CARTÃO 4.
-   - Ameaças literais contra a pessoa ou familiares(Ex: "sua irmãzinha vai ser abusada","vou estuprar sua mãe"): CARTÃO 5.
+7. AMEAÇA DE VIOLÊNCIA SEXUAL LITERAL E AMEAÇA À VIDA:
+   - Menção isolada focada na palavra de abuso (Ex: "seu pai deve ter te estuprado", "foi abusado quando era criança"): CARTÃO 4.
+   - Ameaças literais contra a pessoa ou familiares (Ex: "sua irmãzinha vai ser abusada", "vou estuprar sua mãe", "vou te matar na vida real", "vou matar sua mãe na sua frente", "vou estuprar sua mãe na sua frente", "me passa seu endereço que vou ai te matar"): BAN.
 
 8. REGRA DO ASSINANTE:
    - Se Assinante = SIM, reduza a punição em 1 nível APENAS para o item 1 (Toxicidade Comum).
 
+9. REGRA DE ANTIJOGO:
+   - Menção de antijogo na partida (Ex: "jogando com descaso", "tk com he", "tk com granada", "tk com molotov", "travando passagem", "cegando ou bangando amigo").
+   - A punição DEPENDE da variável [TIPO DE PARTIDA] informada abaixo:
+     * Se for "Ranked": Aplique CARTÃO 1.
+     * Se for "Lobby / GC Solo": Aplique ALERTA.
+     * Se for "Não se aplica" mas houver antijogo claro no texto: Aplique ALERTA e peça para o analista confirmar o modo de jogo.
+
+10. CONDUTA DE MÁ FÉ:
+   - Usar bind snap tap, inventar mentiras, afirmar vantagem em conhecer staff da GC, se passar por admin/suporte, figura pública ou tentar enganar jogadores com dicas falsas (Ex: "digita kill no console que você aumenta o som"), incitar atitudes ruins: ALERTA.
+   - Telar jogadores, dar ghosting (Ex: "telando na partida", "dando ghosting"): CARTÃO 2.
+
+11. GORDOFOBIA:
+   - Termos gordofóbicos gerais (Ex: "seu gordo", "cala a boca gordão"): CARTÃO 1.
+   - Termos gordofóbicos com adição de toxicidade comum: CARTÃO 2.
+   - Repetição frequente desses termos (repetir mais de 4 vezes): CARTÃO 3.
+
+12. MACHISMO:
+   - Termos machistas gerais isolados (Ex: "vai lavar uma louça", "sua vagabunda", "sua puta", "piranha fodida", "cachorra do caralho", "safada putinha"): CARTÃO 2.
+   - Termos machistas gerais com adição de toxicidade comum: CARTÃO 3.
+   - Repetição frequente desses termos (repetir mais de 4 vezes): CARTÃO 4.
+   - Termos de abuso focados no machismo (Ex: "sua estuprada do caralho", "seu pai abusou de você sua puta", "você é estuprada"): CARTÃO 4.
+
 --- CASO PARA CLASSIFICAÇÃO FORENSE ---
 [LOG DO SERVIDOR]: "{texto_usuario}"
 [ASSINANTE]: {assinante}
+[TIPO DE PARTIDA]: {tipo_partida}
 
 --- INSTRUÇÕES DE SAÍDA ---
 Não cite os palavrões na sua justificativa. Não use palavras de ligação soltas (como "Adicionalmente"). 
 - Se o caso se enquadrar na REGRA 5 ("escuro" como posição): Você DEVE usar a estrutura conectada de 3 linhas ensinada na Regra 5.
-- Para TODOS os outros casos (incluindo quando há misturas de xingamentos e homofobia): Você DEVE aplicar apenas a punição da infração MAIS GRAVE detectada. Responda RIGOROSAMENTE em uma única linha, neste formato exato:
+- Para TODOS os outros casos (incluindo Antijogo definido pela interface): Você DEVE aplicar apenas a punição da infração MAIS GRAVE detectada. Responda RIGOROSAMENTE em uma única linha, neste formato exato:
   Recomendo **[PUNIÇÃO]** pois [justificativa técnica].
 """
     return prompt
 
 with st.form("formulario"):
     texto_report = st.text_area("📋 Cole aqui o report:", height=200)
-    status_assinante = st.checkbox("⭐ Jogador é assinante?")
+    
+    # Criamos colunas para deixar o visual mais limpo e profissional
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        status_assinante = st.checkbox("⭐ Jogador é assinante?")
+        
+    with col2:
+        # Nova caixa de seleção para Antijogo
+        tipo_partida_selecionada = st.selectbox(
+            "🎮 Tipo de Partida (Apenas para Antijogo):", 
+            ["Não se aplica", "Ranked", "Lobby / GC Solo"]
+        )
+        
     enviar = st.form_submit_button("🔍 Analisar")
 
 if enviar:
@@ -139,7 +176,8 @@ if enviar:
     else:
         with st.spinner("⚡ Zeus está analisando..."):
             try:
-                prompt = construir_prompt(df_casos, texto_report, status_assinante)
+                # Passamos a nova variável para o prompt
+                prompt = construir_prompt(df_casos, texto_report, status_assinante, tipo_partida_selecionada)
 
                 response = model.generate_content(
                     prompt,

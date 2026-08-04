@@ -117,12 +117,12 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 8. REGRA DO ASSINANTE:
    - Se Assinante = SIM, reduza a punição em 1 nível APENAS para o item 1 (Toxicidade Comum).
 
-9. REGRA DE ANTIJOGO:
-   - Menção de antijogo na partida (Ex: "jogando com descaso", "tk com he", "tk com granada", "tk com molotov", "travando passagem", "cegando ou bangando amigo").
-   - A punição DEPENDE da variável [TIPO DE PARTIDA] informada abaixo:
-     * Se for "Ranked": Aplique CARTÃO 1.
-     * Se for "Lobby / GC Solo": Aplique ALERTA.
-     * Se for "Não se aplica" mas houver antijogo claro no texto: Aplique ALERTA e peça para o analista confirmar o modo de jogo.
+9. REGRA DE ANTIJOGO (RELATOS DE ATITUDES):
+   - Refere-se a ATITUDES descritas pelo analista (Ex: "descaso", "tk no aliado", "tk com he", "tk com arma", "tk com faca", "travando passagem", "cegando aliado").
+   - A punição depende EXCLUSIVAMENTE do [TIPO DE PARTIDA]:
+     * Se for "Ranked": CARTÃO 1.
+     * Se for "Lobby / GC Solo": ALERTA.
+   - TRAVA DE PRIORIDADE: Se o texto colado for um log de chat onde o jogador está xingando *enquanto reclama* de antijogo (Ex: "Seu preto macaco, você está dando tk"), IGNORE a regra de antijogo. A infração de chat (Racismo, Homofobia, etc.) é SEMPRE a mais grave e deve sobrepor o relato de antijogo.
 
 10. CONDUTA DE MÁ FÉ:
    - Usar bind snap tap, inventar mentiras, afirmar vantagem em conhecer staff da GC, se passar por admin/suporte, figura pública ou tentar enganar jogadores com dicas falsas (Ex: "digita kill no console que você aumenta o som"), incitar atitudes ruins: ALERTA.
@@ -155,14 +155,12 @@ Não cite os palavrões na sua justificativa. Não use palavras de ligação sol
 with st.form("formulario"):
     texto_report = st.text_area("📋 Cole aqui o report:", height=200)
     
-    # Criamos colunas para deixar o visual mais limpo e profissional
     col1, col2 = st.columns(2)
     
     with col1:
         status_assinante = st.checkbox("⭐ Jogador é assinante?")
         
     with col2:
-        # Nova caixa de seleção para Antijogo
         tipo_partida_selecionada = st.selectbox(
             "🎮 Tipo de Partida (Apenas para Antijogo):", 
             ["Não se aplica", "Ranked", "Lobby / GC Solo"]
@@ -176,7 +174,6 @@ if enviar:
     else:
         with st.spinner("⚡ Zeus está analisando..."):
             try:
-                # Passamos a nova variável para o prompt
                 prompt = construir_prompt(df_casos, texto_report, status_assinante, tipo_partida_selecionada)
 
                 response = model.generate_content(

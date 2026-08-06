@@ -6,6 +6,14 @@ Apresento o **Zeus**, o nosso Assistente de Inteligência Artificial criado para
 
 O objetivo do Zeus não é substituir o julgamento humano (a palavra final é sempre sua!), mas sim atuar como um "colega analista" super rápido. Ele lê as denúncias, cruza com as nossas regras internas e sugere a punição mais justa em segundos, ajudando a padronizar as nossas decisões.
 
+- Nesse projeto, a infraestrutura do Zeus foi desenhada com foco em baixa latência (velocidade) e consistência de respostas, garantindo que a operação escale sem gargalos.
+
+- Ambiente Isolado: Temos uma API Key do Google Gemini dedicada exclusivamente para o Zeus. Isso significa que nossos limites de requisições por minuto (RPM) e processamento (TPM) são próprios, blindando a ferramenta contra instabilidades de outros sistemas.
+
+- O Modelo usado (Gemini 3.1 Flash Lite): Escolhemos operar especificamente na versão Flash Lite. Diferente dos modelos mais pesados (como o Pro ou Ultra), o Flash Lite é construído especificamente para tarefas de alta frequência e processamento rápido de texto. Ele devolve a classificação em questão de segundos com um custo computacional baixíssimo.
+  
+- Configuramos o modelo no código com a "temperatura zero" (temperature: 0.0). Isso remove a "criatividade" da IA, forçando-a a agir como um classificador estrito. Ela não inventa regras!
+
 # Como o Zeus pensa?
 Ele foi treinado para seguir rigorosamente as nossas **Regras de Ouro**, incluindo:
 * **Tolerância Zero contra Preconceito:** Punições severas para xenofobia e homofobia (Cartões 2 a 4) e BAN imediato para racismo explícito.

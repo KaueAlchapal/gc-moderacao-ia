@@ -52,7 +52,7 @@ filtros_seguranca = [
 # Modelo Zeus (Juiz cirúrgico para as regras)
 model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
 # Modelo Escrivão (Especialista em transcrever áudio sem viés)
-model_escrivao = genai.GenerativeModel("gemini-1.5-flash")
+model_escrivao = genai.GenerativeModel("gemini-3.1-flash-lite")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante, tipo_partida):
     quantidade = min(len(dados_csv), 10)

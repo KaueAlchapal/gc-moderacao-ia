@@ -3,6 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import os
 import random
+import tempfile
 
 st.set_page_config(
     page_title="Zeus AI - Moderação",
@@ -13,7 +14,7 @@ st.set_page_config(
 if os.path.exists("logo.png"):
     st.image("logo.png", width=90)
 
-st.title("Zeus - IA Moderadora")
+st.title("Zeus - IA Moderadora ⚡")
 st.subheader("Assistente de Análise de Reports")
 st.write("Ferramenta de apoio à tomada de decisão baseada no histórico interno de moderação.")
 
@@ -47,8 +48,11 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# Usando o modelo Flash Lite
-model = genai.GenerativeModel("gemini-3.1-flash-lite")
+# CONTRATANDO OS DOIS FUNCIONÁRIOS
+# Modelo Zeus (Juiz cirúrgico para as regras)
+model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
+# Modelo Escrivão (Especialista em transcrever áudio sem viés)
+model_escrivao = genai.GenerativeModel("gemini-1.5-flash")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante, tipo_partida):
     quantidade = min(len(dados_csv), 10)
@@ -152,48 +156,141 @@ Não cite os palavrões na sua justificativa. Não use palavras de ligação sol
 """
     return prompt
 
-with st.form("formulario"):
-    texto_report = st.text_area("📋 Cole aqui o report:", height=200)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        status_assinante = st.checkbox("⭐ Jogador é assinante?")
+# CRIANDO AS ABAS
+aba_texto, aba_audio = st.tabs(["📝 Analisar Chat/Log", "🎧 Transcrever e Analisar Áudio"])
+
+# ==========================================
+# ABA 1: ANÁLISE DE TEXTO TRADICIONAL
+# ==========================================
+with aba_texto:
+    with st.form("formulario_texto"):
+        texto_report = st.text_area("📋 Cole aqui o report:", height=200)
         
-    with col2:
-        tipo_partida_selecionada = st.selectbox(
-            "🎮 Tipo de Partida (Apenas para Antijogo):", 
-            ["Não se aplica", "Ranked", "Lobby / GC Solo"]
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            status_assinante_texto = st.checkbox("⭐ Jogador é assinante?", key="ass_texto")
+            
+        with col2:
+            tipo_partida_texto = st.selectbox(
+                "🎮 Tipo de Partida (Apenas para Antijogo):", 
+                ["Não se aplica", "Ranked", "Lobby / GC Solo"],
+                key="partida_texto"
+            )
+            
+        enviar_texto = st.form_submit_button("🔍 Analisar Texto")
+
+    if enviar_texto:
+        if not texto_report.strip():
+            st.warning("Cole algum texto antes.")
+        else:
+            with st.spinner("⚡ Zeus está analisando o texto..."):
+                try:
+                    prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
+
+                    response = model_zeus.generate_content(
+                        prompt,
+                        safety_settings=filtros_seguranca,
+                        generation_config={"temperature": 0.0}
+                    )
+
+                    if not response.candidates or len(response.candidates) == 0:
+                        st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado. O termo inserido violou a camada intransponível da API pública.")
+                    else:
+                        st.success("✅ Análise concluída!")
+                        st.markdown("### 📢 Recomendação do Zeus:")
+                        st.write(response.text)
+
+                except Exception as e:
+                    st.error("Erro ao processar análise.")
+                    st.code(str(e))
+
+
+# ==========================================
+# ABA 2: TRANSCRIÇÃO E ANÁLISE DE ÁUDIO
+# ==========================================
+with aba_audio:
+    with st.form("formulario_audio"):
+        st.markdown("Faça o upload do áudio extraído da demo do CS2. O Zeus irá transcrever as falas de forma neutra e, em seguida, aplicar as regras de moderação.")
+        arquivo_audio = st.file_uploader("🎧 Selecione o arquivo (.wav)", type=["wav", "mp3", "m4a", "ogg"])
         
-    enviar = st.form_submit_button("🔍 Analisar")
+        col3, col4 = st.columns(2)
+        with col3:
+            status_assinante_audio = st.checkbox("⭐ Jogador é assinante?", key="ass_audio")
+            
+        with col4:
+            tipo_partida_audio = st.selectbox(
+                "🎮 Tipo de Partida (Apenas para Antijogo):", 
+                ["Não se aplica", "Ranked", "Lobby / GC Solo"],
+                key="partida_audio"
+            )
+            
+        enviar_audio = st.form_submit_button("🎧 Transcrever e Julgar")
 
-if enviar:
-    if not texto_report.strip():
-        st.warning("Cole algum texto antes.")
-    else:
-        with st.spinner("⚡ Zeus está analisando..."):
-            try:
-                prompt = construir_prompt(df_casos, texto_report, status_assinante, tipo_partida_selecionada)
+    if enviar_audio:
+        if arquivo_audio is None:
+            st.warning("⚠️ Faça o upload de um arquivo de áudio antes de prosseguir.")
+        else:
+            texto_transcrito = ""
+            
+            # PASSO 1: Transcrição (O Escrivão Neutro)
+            with st.spinner("✍️ Escrivão Neutro ouvindo e transcrevendo o áudio..."):
+                try:
+                    # Salvando o arquivo temporariamente para a API ler
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+                        temp_file.write(arquivo_audio.read())
+                        temp_path = temp_file.name
 
-                response = model.generate_content(
-                    prompt,
-                    safety_settings=filtros_seguranca,
-                    generation_config={
-                        "temperature": 0.0
-                    }
-                )
+                    # Subindo o arquivo para o Google Gemini
+                    arquivo_gemini = genai.upload_file(temp_path)
 
-                if not response.candidates or len(response.candidates) == 0:
-                    st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado. O termo inserido violou a camada intransponível da API pública.")
-                else:
-                    st.success("✅ Análise concluída!")
-                    st.markdown("### 📢 Recomendação do Zeus:")
-                    st.write(response.text)
+                    # Prompt neutro para evitar viés de confirmação (Priming)
+                    prompt_escrivao = """
+                    Você é um transcritor profissional e isento. 
+                    Sua única tarefa é ouvir este áudio extraído de um jogo e escrever EXATAMENTE as palavras que foram ditas.
+                    Não assuma intenções, não procure por xingamentos específicos e não adivinhe contexto.
+                    Se o áudio estiver ruidoso e você não tiver certeza absoluta de uma palavra, transcreva apenas o que for perfeitamente audível.
+                    Escreva apenas a transcrição direta, sem comentários extras.
+                    """
 
-            except Exception as e:
-                st.error("Erro ao processar análise.")
-                st.code(str(e))
+                    response_transcricao = model_escrivao.generate_content(
+                        [prompt_escrivao, arquivo_gemini],
+                        generation_config={"temperature": 0.0}
+                    )
+                    
+                    texto_transcrito = response_transcricao.text
+                    
+                    st.info(f"**Transcrição bruta detectada:**\n\n\"{texto_transcrito}\"")
+                    
+                    # Limpando o arquivo do servidor do Google após uso para economizar espaço
+                    genai.delete_file(arquivo_gemini.name)
+                    os.remove(temp_path)
+
+                except Exception as e:
+                    st.error("Erro durante a transcrição do áudio.")
+                    st.code(str(e))
+
+            # PASSO 2: Julgamento (O Zeus Juiz)
+            if texto_transcrito:
+                with st.spinner("⚡ Zeus está cruzando a transcrição com o livro de regras..."):
+                    try:
+                        prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
+
+                        response_audio = model_zeus.generate_content(
+                            prompt_audio,
+                            safety_settings=filtros_seguranca,
+                            generation_config={"temperature": 0.0}
+                        )
+
+                        if not response_audio.candidates or len(response_audio.candidates) == 0:
+                            st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado no julgamento.")
+                        else:
+                            st.success("✅ Análise de áudio concluída com sucesso!")
+                            st.markdown("### 📢 Recomendação Final do Zeus:")
+                            st.write(response_audio.text)
+
+                    except Exception as e:
+                        st.error("Erro ao processar o julgamento da transcrição.")
+                        st.code(str(e))
 
 st.divider()
 st.caption(f"📊 Banco carregado: {len(df_casos)} casos.")

@@ -155,7 +155,7 @@ with st.sidebar:
             st.image("logo.png", use_container_width=True)
             
     st.markdown("<h3 style='text-align: center; margin-top: -15px;'>Zeus Control</h3>", unsafe_allow_html=True)
-    st.caption(f"<div style='text-align: center;'>Banco atual: {len(df_casos)} casos.</div>", unsafe_allow_html=True)
+    st.caption(f"<div style='text-align: center;'>Banco treinado: {len(df_casos)} casos.</div>", unsafe_allow_html=True)
     
     st.divider()
     
@@ -164,8 +164,8 @@ with st.sidebar:
         resetar_app()
         st.rerun()
 
-    # Quarentena de ML movida para a lateral (SÓ APARECE SE TIVER ANÁLISE PRONTA)
-    if st.session_state.analise_concluida:
+    # Quarentena de ML movida para a lateral (SÓ APARECE SE TIVER ANÁLISE PRONTA E FOR TEXTO/ÁUDIO VÁLIDO)
+    if st.session_state.analise_concluida and st.session_state.ultimo_texto:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
         st.write("Ajuste a punição real aplicada neste caso:")
@@ -257,26 +257,40 @@ with col_entrada:
                             prompt_escrivao = "Transcreva EXATAMENTE as palavras audíveis do áudio, sem adivinhar contexto."
                             
                             res_transcricao = model_escrivao.generate_content(
-                             [prompt_escrivao, arquivo_gemini], 
-                             generation_config={"temperature": 0.0},
-                            safety_settings=filtros_seguranca
-)
-                            texto_transcrito = res_transcricao.text
+                                [prompt_escrivao, arquivo_gemini], 
+                                generation_config={"temperature": 0.0},
+                                safety_settings=filtros_seguranca
+                            )
                             
+                            # BLINDAGEM: Tenta ler o texto. Se o áudio for mudo, salva como vazio.
+                            try:
+                                texto_transcrito = res_transcricao.text
+                            except ValueError:
+                                texto_transcrito = ""
+                            
+                            # Limpeza imediata do arquivo da nuvem do Google
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
-                            prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
-                            res_audio = model_zeus.generate_content(prompt_audio, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
-
-                            if res_audio.candidates:
-                                st.session_state.ultimo_texto = texto_transcrito
-                                st.session_state.ultima_recomendacao = res_audio.text
+                            # Validação: Se não houver fala, para por aqui
+                            if not texto_transcrito.strip():
+                                st.session_state.ultimo_texto = ""
+                                st.session_state.ultima_recomendacao = "⚠️ Nenhuma fala humana audível detectada neste arquivo."
                                 st.session_state.arquivo_audio_atual = arquivo_audio
                                 st.session_state.analise_concluida = True
                                 st.rerun()
+                            else:
+                                prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
+                                res_audio = model_zeus.generate_content(prompt_audio, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
+
+                                if res_audio.candidates:
+                                    st.session_state.ultimo_texto = texto_transcrito
+                                    st.session_state.ultima_recomendacao = res_audio.text
+                                    st.session_state.arquivo_audio_atual = arquivo_audio
+                                    st.session_state.analise_concluida = True
+                                    st.rerun()
                         except Exception as e:
-                            st.error(f"Erro: {e}")
+                            st.error(f"Erro no processamento do áudio: {e}")
 
 # ------------------------------------------
 # LADO DIREITO: VEDEDITO ISOLADO E LIMPO
@@ -289,8 +303,12 @@ with col_saida:
             if st.session_state.arquivo_audio_atual is not None:
                 st.audio(st.session_state.arquivo_audio_atual)
             
-            st.info(f"**Contexto capturado:**\n\n_{st.session_state.ultimo_texto}_")
-            st.success(st.session_state.ultima_recomendacao)
+            # Se a IA não escutou nada, mostra aviso amarelo em vez de sucesso
+            if not st.session_state.ultimo_texto.strip():
+                st.warning(st.session_state.ultima_recomendacao)
+            else:
+                st.info(f"**Contexto capturado:**\n\n_{st.session_state.ultimo_texto}_")
+                st.success(st.session_state.ultima_recomendacao)
     else:
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")

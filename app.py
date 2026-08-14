@@ -11,6 +11,19 @@ st.set_page_config(
     layout="centered"
 )
 
+# ==========================================
+# GERENCIAMENTO DE MEMÓRIA (SESSION STATE)
+# ==========================================
+if 'analise_texto_concluida' not in st.session_state:
+    st.session_state.analise_texto_concluida = False
+    st.session_state.texto_infrator_texto = ""
+    st.session_state.recomendacao_texto = ""
+
+if 'analise_audio_concluida' not in st.session_state:
+    st.session_state.analise_audio_concluida = False
+    st.session_state.texto_infrator_audio = ""
+    st.session_state.recomendacao_audio = ""
+
 if os.path.exists("logo.png"):
     st.image("logo.png", width=90)
 
@@ -32,6 +45,22 @@ def carregar_csv():
 
 df_casos = carregar_csv()
 
+# ==========================================
+# FUNÇÃO DE MACHINE LEARNING (QUARENTENA)
+# ==========================================
+def salvar_feedback(texto, punicao):
+    arquivo_treino = "treinamento.csv"
+    novo_dado = pd.DataFrame([{
+        "Exemplos de ocorridos nos reports (Falas/Chats)": texto,
+        "Punição aplicada": punicao
+    }])
+    
+    # Se o arquivo já existir, insere no final. Se não, cria com cabeçalho.
+    if os.path.exists(arquivo_treino):
+        novo_dado.to_csv(arquivo_treino, mode='a', header=False, index=False)
+    else:
+        novo_dado.to_csv(arquivo_treino, index=False)
+
 api_key = os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -48,10 +77,8 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# CONTRATANDO OS DOIS FUNCIONÁRIOS
-# Modelo Zeus (Juiz cirúrgico para as regras)
+# CONTRATANDO OS DOIS FUNCIONÁRIOS (Limitados a 3.1 Flash Lite para economizar a API)
 model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
-# Modelo Escrivão (Especialista em transcrever áudio sem viés)
 model_escrivao = genai.GenerativeModel("gemini-3.1-flash-lite")
 
 def construir_prompt(dados_csv, texto_usuario, eh_assinante, tipo_partida):
@@ -156,20 +183,19 @@ Não cite os palavrões na sua justificativa. Não use palavras de ligação sol
 """
     return prompt
 
-# CRIANDO AS ABAS
 aba_texto, aba_audio = st.tabs(["📝 Analisar Chat/Log", "🎧 Transcrever e Analisar Áudio"])
 
 # ==========================================
 # ABA 1: ANÁLISE DE TEXTO TRADICIONAL
 # ==========================================
 with aba_texto:
-    with st.form("formulario_texto"):
+    # O clear_on_submit=True apaga o texto da caixa após o envio
+    with st.form("formulario_texto", clear_on_submit=True):
         texto_report = st.text_area("📋 Cole aqui o report:", height=200)
         
         col1, col2 = st.columns(2)
         with col1:
             status_assinante_texto = st.checkbox("⭐ Jogador é assinante?", key="ass_texto")
-            
         with col2:
             tipo_partida_texto = st.selectbox(
                 "🎮 Tipo de Partida (Apenas para Antijogo):", 
@@ -186,7 +212,6 @@ with aba_texto:
             with st.spinner("⚡ Zeus está analisando o texto..."):
                 try:
                     prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
-
                     response = model_zeus.generate_content(
                         prompt,
                         safety_settings=filtros_seguranca,
@@ -194,29 +219,55 @@ with aba_texto:
                     )
 
                     if not response.candidates or len(response.candidates) == 0:
-                        st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado. O termo inserido violou a camada intransponível da API pública.")
+                        st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado.")
                     else:
-                        st.success("✅ Análise concluída!")
-                        st.markdown("### 📢 Recomendação do Zeus:")
-                        st.write(response.text)
+                        # Salva o resultado na memória da sessão
+                        st.session_state.texto_infrator_texto = texto_report
+                        st.session_state.recomendacao_texto = response.text
+                        st.session_state.analise_texto_concluida = True
 
                 except Exception as e:
                     st.error("Erro ao processar análise.")
                     st.code(str(e))
 
+    # Exibe os resultados e a Quarentena de ML se a análise estiver na memória
+    if st.session_state.analise_texto_concluida:
+        st.success("✅ Análise concluída!")
+        st.markdown("### 📢 Recomendação do Zeus:")
+        st.write(st.session_state.recomendacao_texto)
+        
+        st.markdown("---")
+        st.markdown("### 🧠 Treinar Zeus (Machine Learning)")
+        st.write("Qual foi a punição final aplicada pelo analista? Salve para treinar a IA no futuro.")
+        
+        punicao_real_texto = st.selectbox(
+            "Punição aplicada de fato:", 
+            ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"], 
+            key="punicao_ml_texto"
+        )
+        
+        col_fb1, col_fb2 = st.columns(2)
+        with col_fb1:
+            if st.button("💾 Salvar na Quarentena (ML)", key="salvar_texto"):
+                salvar_feedback(st.session_state.texto_infrator_texto, punicao_real_texto)
+                st.success("✅ Caso salvo com sucesso no arquivo treinamento.csv!")
+        with col_fb2:
+            if st.button("🔄 Limpar Tela e Nova Análise", key="reset_texto"):
+                st.session_state.analise_texto_concluida = False
+                st.rerun()
 
 # ==========================================
 # ABA 2: TRANSCRIÇÃO E ANÁLISE DE ÁUDIO
 # ==========================================
 with aba_audio:
-    with st.form("formulario_audio"):
-        st.markdown("Faça o upload do áudio extraído da demo do CS2. O Zeus irá transcrever as falas de forma neutra e, em seguida, aplicar as regras de moderação.")
-        arquivo_audio = st.file_uploader("🎧 Selecione o arquivo (.wav)", type=["wav", "mp3", "m4a", "ogg"])
+    # O clear_on_submit=True descarta o arquivo de áudio pesado da memória RAM após o envio
+    with st.form("formulario_audio", clear_on_submit=True):
+        st.markdown("Faça o upload do áudio extraído da demo do CS2. O Zeus irá transcrever e julgar.")
+        arquivo_audio = st.file_uploader("🎧 Selecione o arquivo (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
         
         col3, col4 = st.columns(2)
         with col3:
             status_assinante_audio = st.checkbox("⭐ Jogador é assinante?", key="ass_audio")
-            
         with col4:
             tipo_partida_audio = st.selectbox(
                 "🎮 Tipo de Partida (Apenas para Antijogo):", 
@@ -230,20 +281,14 @@ with aba_audio:
         if arquivo_audio is None:
             st.warning("⚠️ Faça o upload de um arquivo de áudio antes de prosseguir.")
         else:
-            texto_transcrito = ""
-            
-            # PASSO 1: Transcrição (O Escrivão Neutro)
             with st.spinner("✍️ Escrivão Neutro ouvindo e transcrevendo o áudio..."):
                 try:
-                    # Salvando o arquivo temporariamente para a API ler
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                         temp_file.write(arquivo_audio.read())
                         temp_path = temp_file.name
 
-                    # Subindo o arquivo para o Google Gemini
                     arquivo_gemini = genai.upload_file(temp_path)
 
-                    # Prompt neutro para evitar viés de confirmação (Priming)
                     prompt_escrivao = """
                     Você é um transcritor profissional e isento. 
                     Sua única tarefa é ouvir este áudio extraído de um jogo e escrever EXATAMENTE as palavras que foram ditas.
@@ -259,38 +304,57 @@ with aba_audio:
                     
                     texto_transcrito = response_transcricao.text
                     
-                    st.info(f"**Transcrição bruta detectada:**\n\n\"{texto_transcrito}\"")
-                    
-                    # Limpando o arquivo do servidor do Google após uso para economizar espaço
+                    # Limpando a memória do servidor
                     genai.delete_file(arquivo_gemini.name)
+                    temp_file.close()
                     os.remove(temp_path)
 
+                    # Passo 2: O Julgamento
+                    prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
+                    response_audio = model_zeus.generate_content(
+                        prompt_audio,
+                        safety_settings=filtros_seguranca,
+                        generation_config={"temperature": 0.0}
+                    )
+
+                    if not response_audio.candidates or len(response_audio.candidates) == 0:
+                        st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado no julgamento.")
+                    else:
+                        # Salva o resultado na memória da sessão
+                        st.session_state.texto_infrator_audio = texto_transcrito
+                        st.session_state.recomendacao_audio = response_audio.text
+                        st.session_state.analise_audio_concluida = True
+
                 except Exception as e:
-                    st.error("Erro durante a transcrição do áudio.")
+                    st.error("Erro durante o processamento do áudio.")
                     st.code(str(e))
 
-            # PASSO 2: Julgamento (O Zeus Juiz)
-            if texto_transcrito:
-                with st.spinner("⚡ Zeus está cruzando a transcrição com o livro de regras..."):
-                    try:
-                        prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
-
-                        response_audio = model_zeus.generate_content(
-                            prompt_audio,
-                            safety_settings=filtros_seguranca,
-                            generation_config={"temperature": 0.0}
-                        )
-
-                        if not response_audio.candidates or len(response_audio.candidates) == 0:
-                            st.warning("⚠️ O bloqueio de segurança mestre do Google foi acionado no julgamento.")
-                        else:
-                            st.success("✅ Análise de áudio concluída com sucesso!")
-                            st.markdown("### 📢 Recomendação Final do Zeus:")
-                            st.write(response_audio.text)
-
-                    except Exception as e:
-                        st.error("Erro ao processar o julgamento da transcrição.")
-                        st.code(str(e))
+    # Exibe os resultados e a Quarentena de ML se a análise de áudio estiver na memória
+    if st.session_state.analise_audio_concluida:
+        st.info(f"**Transcrição bruta detectada:**\n\n\"{st.session_state.texto_infrator_audio}\"")
+        st.success("✅ Análise de áudio concluída com sucesso!")
+        st.markdown("### 📢 Recomendação Final do Zeus:")
+        st.write(st.session_state.recomendacao_audio)
+        
+        st.markdown("---")
+        st.markdown("### 🧠 Treinar Zeus (Machine Learning)")
+        st.write("Qual foi a punição final aplicada pelo analista? Salve para treinar a IA no futuro.")
+        
+        punicao_real_audio = st.selectbox(
+            "Punição aplicada de fato:", 
+            ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"], 
+            key="punicao_ml_audio"
+        )
+        
+        col_fb3, col_fb4 = st.columns(2)
+        with col_fb3:
+            if st.button("💾 Salvar na Quarentena (ML)", key="salvar_audio"):
+                salvar_feedback(st.session_state.texto_infrator_audio, punicao_real_audio)
+                st.success("✅ Caso de áudio salvo com sucesso no arquivo treinamento.csv!")
+        with col_fb4:
+            if st.button("🔄 Limpar Tela e Nova Análise", key="reset_audio"):
+                st.session_state.analise_audio_concluida = False
+                st.rerun()
 
 st.divider()
 st.caption(f"📊 Banco carregado: {len(df_casos)} casos.")

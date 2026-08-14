@@ -5,7 +5,9 @@ import os
 import random
 import tempfile
 
-# 1. LAYOUT WIDE (TELA CHEIA)
+# ==========================================
+# 1. CONFIGURAÇÃO DA PÁGINA (WIDE)
+# ==========================================
 st.set_page_config(
     page_title="Zeus AI - Moderação",
     page_icon="⚡",
@@ -13,14 +15,23 @@ st.set_page_config(
 )
 
 # ==========================================
-# GERENCIAMENTO UNIFICADO DE MEMÓRIA
+# 2. GERENCIAMENTO DE MEMÓRIA (CORRIGIDO)
 # ==========================================
 if 'analise_concluida' not in st.session_state:
     st.session_state.analise_concluida = False
     st.session_state.ultimo_texto = ""
     st.session_state.ultima_recomendacao = ""
-    st.session_state.aba_atual = "Texto"
+    st.session_state.arquivo_audio_atual = None
 
+def resetar_app():
+    st.session_state.analise_concluida = False
+    st.session_state.ultimo_texto = ""
+    st.session_state.ultima_recomendacao = ""
+    st.session_state.arquivo_audio_atual = None
+
+# ==========================================
+# 3. BACKEND E IA
+# ==========================================
 CSV_FILE = "casos.csv"
 
 @st.cache_data
@@ -60,7 +71,7 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# CONTRATANDO OS DOIS FUNCIONÁRIOS
+# Usando o 3.1 Flash Lite para contornar o limite de requisições do plano gratuito
 model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
 model_escrivao = genai.GenerativeModel("gemini-3.1-flash-lite")
 
@@ -76,7 +87,7 @@ def construir_prompt(dados_csv, texto_usuario, eh_assinante, tipo_partida):
 
     prompt = f"""
 Você é Zeus, um classificador linguístico e forense sênior focado em logs de Counter-Strike 2 (CS2).
-Sua função é identificar a infração MAIS GRAVE contida no log e recomendar UMA ÚNICA punição principal (exceto no caso específico da Regra 5).
+Sua função é identificar a infração MAIS GRAVE contida no log e recomendar UMA ÚNICA punição principal.
 
 --- CONTEXTO VITAL DO JOGO (CS2) E AMBIGUIDADE DE MAPA ---
 No CS2, jogadores são identificados por cores. A palavra "escuro" é uma posição oficial APENAS nos mapas Dust 2, Ancient e Inferno. 
@@ -115,147 +126,146 @@ Recomendo **[PUNIÇÃO]** pois [justificativa técnica].
     return prompt
 
 # ==========================================
-# BARRA LATERAL (SIDEBAR FLUTUANTE)
+# 4. BARRA LATERAL (MENU FIXO)
 # ==========================================
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
+    st.caption(f"📊 Banco treinado: {len(df_casos)} casos.")
     
-    st.header("⚙️ Controle")
-    st.caption(f"Banco: {len(df_casos)} casos.")
+    st.divider()
     
-    # Só mostra os controles se houver uma análise pronta na tela
-    if st.session_state.analise_concluida:
-        if st.button("🔄 Nova Análise (Limpar Tela)", type="primary", use_container_width=True):
-            st.session_state.analise_concluida = False
-            st.rerun()
-            
-        st.divider()
-        st.subheader("🧠 Quarentena ML")
-        st.write("Ajuste a punição real para treinar a IA.")
-        
-        punicao_real = st.selectbox(
-            "Veredito do Analista:", 
-            ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"]
-        )
-        
-        if st.button("💾 Salvar Feedback", use_container_width=True):
-            salvar_feedback(st.session_state.ultimo_texto, punicao_real)
-            st.toast("✅ Caso salvo com sucesso no banco de ML!", icon="🚀")
+    # Botão fixo e sempre visível para resetar a tela
+    if st.button("🔄 Nova Análise (Limpar Tudo)", type="primary", use_container_width=True):
+        resetar_app()
+        st.rerun()
 
 # ==========================================
-# ÁREA PRINCIPAL
+# 5. TELA PRINCIPAL (DIVISÃO 50/50)
 # ==========================================
 st.title("Zeus - IA Moderadora ⚡")
-st.markdown("Ferramenta de apoio à tomada de decisão baseada no histórico interno de moderação.")
+st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
-aba_texto, aba_audio = st.tabs(["📝 Analisar Chat/Log", "🎧 Transcrever e Analisar Áudio"])
+# Divisão de colunas: Esquerda (Entrada) | Direita (Saída)
+col_entrada, col_saida = st.columns([1.1, 1], gap="large")
 
-# --- ABA DE TEXTO ---
-with aba_texto:
-    with st.container(border=True):
-        with st.form("formulario_texto", clear_on_submit=True):
-            texto_report = st.text_area("📋 Cole o report recebido:", height=150, placeholder="Insira o log do chat ou descrição do antijogo...")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                status_assinante_texto = st.toggle("⭐ Jogador é assinante?", key="ass_texto")
-            with col2:
-                tipo_partida_texto = st.selectbox(
-                    "🎮 Tipo de Partida (Antijogo):", 
-                    ["Não se aplica", "Ranked", "Lobby / GC Solo"],
-                    key="partida_texto"
-                )
+# ------------------------------------------
+# LADO ESQUERDO: PAINEL DE ENTRADA
+# ------------------------------------------
+with col_entrada:
+    aba_texto, aba_audio = st.tabs(["📝 Analisar Chat/Log", "🎧 Transcrever Áudio"])
+
+    with aba_texto:
+        with st.container(border=True):
+            # Form sem o clear_on_submit para não apagar o que o analista digitou atoa
+            with st.form("form_texto", clear_on_submit=False):
+                texto_report = st.text_area("📋 Cole o report recebido:", height=150)
                 
-            enviar_texto = st.form_submit_button("🔍 Executar Análise de Texto", use_container_width=True)
+                c1, c2 = st.columns(2)
+                with c1:
+                    status_assinante_texto = st.toggle("⭐ Jogador é assinante?", key="ass_t")
+                with c2:
+                    tipo_partida_texto = st.selectbox(
+                        "🎮 Partida (Antijogo):", 
+                        ["Não se aplica", "Ranked", "Lobby / GC Solo"], key="part_t"
+                    )
+                    
+                submit_texto = st.form_submit_button("🔍 Executar Análise", use_container_width=True)
 
-        if enviar_texto:
-            if not texto_report.strip():
-                st.toast("⚠️ Cole algum texto antes de analisar.", icon="⚠️")
-            else:
-                with st.spinner("⚡ Zeus está analisando..."):
-                    try:
-                        prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
-                        response = model_zeus.generate_content(
-                            prompt,
-                            safety_settings=filtros_seguranca,
-                            generation_config={"temperature": 0.0}
-                        )
+            if submit_texto:
+                if not texto_report.strip():
+                    st.toast("⚠️ Cole algum texto antes de analisar.", icon="⚠️")
+                else:
+                    with st.spinner("⚡ Analisando..."):
+                        try:
+                            prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
+                            response = model_zeus.generate_content(prompt, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
+                            if response.candidates:
+                                st.session_state.ultimo_texto = texto_report
+                                st.session_state.ultima_recomendacao = response.text
+                                st.session_state.arquivo_audio_atual = None # Limpa áudio se for texto
+                                st.session_state.analise_concluida = True
+                                st.rerun() # Atualiza a tela instantaneamente
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
 
-                        if not response.candidates or len(response.candidates) == 0:
-                            st.error("⚠️ Bloqueio de segurança mestre do Google acionado.")
-                        else:
-                            st.session_state.ultimo_texto = texto_report
-                            st.session_state.ultima_recomendacao = response.text
-                            st.session_state.analise_concluida = True
-                            st.toast("✅ Análise concluída!", icon="✅")
-                    except Exception as e:
-                        st.error(f"Erro: {e}")
-
-# --- ABA DE ÁUDIO ---
-with aba_audio:
-    with st.container(border=True):
-        with st.form("formulario_audio", clear_on_submit=True):
-            arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
-            
-            col3, col4 = st.columns(2)
-            with col3:
-                status_assinante_audio = st.toggle("⭐ Jogador é assinante?", key="ass_audio")
-            with col4:
-                tipo_partida_audio = st.selectbox(
-                    "🎮 Tipo de Partida (Antijogo):", 
-                    ["Não se aplica", "Ranked", "Lobby / GC Solo"],
-                    key="partida_audio"
-                )
+    with aba_audio:
+        with st.container(border=True):
+            # Form sem clear_on_submit: MANTÉM O ÁUDIO NA TELA!
+            with st.form("form_audio", clear_on_submit=False):
+                arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
                 
-            enviar_audio = st.form_submit_button("🎧 Transcrever e Julgar Áudio", use_container_width=True)
+                c3, c4 = st.columns(2)
+                with c3:
+                    status_assinante_audio = st.toggle("⭐ Jogador é assinante?", key="ass_a")
+                with c4:
+                    tipo_partida_audio = st.selectbox(
+                        "🎮 Partida (Antijogo):", 
+                        ["Não se aplica", "Ranked", "Lobby / GC Solo"], key="part_a"
+                    )
+                    
+                submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
 
-        if enviar_audio:
-            if arquivo_audio is None:
-                st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
-            else:
-                with st.spinner("✍️ Escrivão Neutro transcrevendo..."):
-                    try:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                            temp_file.write(arquivo_audio.read())
-                            temp_path = temp_file.name
+            if submit_audio:
+                if arquivo_audio is None:
+                    st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
+                else:
+                    with st.spinner("✍️ Escrivão transcrevendo e Zeus julgando..."):
+                        try:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+                                temp_file.write(arquivo_audio.read())
+                                temp_path = temp_file.name
 
-                        arquivo_gemini = genai.upload_file(temp_path)
-                        prompt_escrivao = "Você é um transcritor isento. Transcreva EXATAMENTE as palavras audíveis do áudio, sem adivinhar contexto."
-                        
-                        response_transcricao = model_escrivao.generate_content(
-                            [prompt_escrivao, arquivo_gemini],
-                            generation_config={"temperature": 0.0}
-                        )
-                        texto_transcrito = response_transcricao.text
-                        
-                        genai.delete_file(arquivo_gemini.name)
-                        os.remove(temp_path)
+                            arquivo_gemini = genai.upload_file(temp_path)
+                            prompt_escrivao = "Transcreva EXATAMENTE as palavras audíveis do áudio, sem adivinhar contexto."
+                            
+                            res_transcricao = model_escrivao.generate_content([prompt_escrivao, arquivo_gemini], generation_config={"temperature": 0.0})
+                            texto_transcrito = res_transcricao.text
+                            
+                            genai.delete_file(arquivo_gemini.name)
+                            os.remove(temp_path)
 
-                        # Julgamento
-                        prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
-                        response_audio = model_zeus.generate_content(
-                            prompt_audio,
-                            safety_settings=filtros_seguranca,
-                            generation_config={"temperature": 0.0}
-                        )
+                            prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
+                            res_audio = model_zeus.generate_content(prompt_audio, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
 
-                        if not response_audio.candidates or len(response_audio.candidates) == 0:
-                            st.error("⚠️ Bloqueio de segurança mestre acionado no julgamento.")
-                        else:
-                            st.session_state.ultimo_texto = texto_transcrito
-                            st.session_state.ultima_recomendacao = response_audio.text
-                            st.session_state.analise_concluida = True
-                            st.toast("✅ Transcrição e Análise concluídas!", icon="✅")
+                            if res_audio.candidates:
+                                st.session_state.ultimo_texto = texto_transcrito
+                                st.session_state.ultima_recomendacao = res_audio.text
+                                st.session_state.arquivo_audio_atual = arquivo_audio # Salva o áudio na memória
+                                st.session_state.analise_concluida = True
+                                st.rerun() # Atualiza a tela instantaneamente
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
 
-                    except Exception as e:
-                        st.error(f"Erro: {e}")
-
-# ==========================================
-# EXIBIÇÃO DE RESULTADOS (COMUM ÀS DUAS ABAS)
-# ==========================================
-if st.session_state.analise_concluida:
-    with st.container(border=True):
-        st.markdown("### 📢 Veredito do Zeus")
-        st.info(f"**Contexto/Transcrição capturada:**\n\n_{st.session_state.ultimo_texto}_")
-        st.success(st.session_state.ultima_recomendacao)
+# ------------------------------------------
+# LADO DIREITO: RESULTADOS E MACHINE LEARNING
+# ------------------------------------------
+with col_saida:
+    if st.session_state.analise_concluida:
+        with st.container(border=True):
+            st.markdown("### 📢 Veredito do Zeus")
+            
+            # Se for áudio, exibe um player de áudio elegante para o analista reouvir!
+            if st.session_state.arquivo_audio_atual is not None:
+                st.audio(st.session_state.arquivo_audio_atual)
+            
+            st.info(f"**Contexto capturado:**\n\n_{st.session_state.ultimo_texto}_")
+            st.success(st.session_state.ultima_recomendacao)
+            
+        with st.container(border=True):
+            st.markdown("### 🧠 Treinar Zeus (Machine Learning)")
+            st.markdown("Ajuste a punição real para treinar a IA.")
+            
+            punicao_real = st.selectbox(
+                "Veredito final aplicado:", 
+                ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"]
+            )
+            
+            if st.button("💾 Salvar Feedback no Banco de Treinamento", use_container_width=True):
+                salvar_feedback(st.session_state.ultimo_texto, punicao_real)
+                st.toast("✅ Salvo com sucesso! A IA ficará mais inteligente.", icon="🚀")
+    else:
+        # Mensagem de espera elegante
+        with st.container(border=True):
+            st.markdown("### ⏳ Aguardando caso...")
+            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecerá aqui.")

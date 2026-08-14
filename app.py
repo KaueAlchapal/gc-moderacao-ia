@@ -18,6 +18,7 @@ st.set_page_config(
 # Injeção de CSS para as cores da Gamers Club (Azul, Preto, Branco)
 st.markdown("""
     <style>
+    /* Força o Azul GC nos botões primários */
     div.stButton > button[kind="primary"] {
         background-color: #00AEEF !important;
         color: white !important;
@@ -27,6 +28,7 @@ st.markdown("""
     div.stButton > button[kind="primary"]:hover {
         background-color: #008CBA !important;
     }
+    /* Estilização suave para os containers */
     div[data-testid="stForm"] {
         border-color: #333333;
     }
@@ -78,7 +80,7 @@ def salvar_feedback(texto, punicao):
 
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("⚠️ GEMINI_API_KEY não encontrada.")
+    st.error("⚠️ GEMINI_API_KEY não encontrada. Verifique suas variáveis de ambiente.")
     st.stop()
 
 genai.configure(api_key=api_key)
@@ -90,6 +92,7 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
+# Contratando o Gemini 3.1 Flash Lite para contornar o limite do plano gratuito
 model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
 model_escrivao = genai.GenerativeModel("gemini-3.1-flash-lite")
 
@@ -112,19 +115,22 @@ Sua função é identificar a infração MAIS GRAVE contida no log e recomendar 
 --- CONTEXTO VITAL DO JOGO (CS2) E AMBIGUIDADE DE MAPA ---
 No CS2, jogadores são identificados por cores. A palavra "escuro" é uma posição oficial APENAS nos mapas Dust 2, Ancient e Inferno. 
 - Se for ataque pessoal direto (Ex: "seu escuro"), é BAN imediato por racismo.
-- Se for usado indicando local ou direção (Ex: "vai escuro"), VOCÊ É OBRIGADO a usar a estrutura da Regra 5.
+- Se for usado indicando local ou direção (Ex: "vai escuro"), aplique a regra 5.
 
---- TABELA DE PUNIÇÕES ---
-Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
+--- TABELA DE PUNIÇÕES VÁLIDAS ---
+SEM PUNIÇÃO, ALERTA, CARTÃO 1, CARTÃO 2, CARTÃO 3, CARTÃO 4, CARTÃO 5, BAN.
 
 --- DIRETRIZES DE CLASSIFICAÇÃO (SIGA ESTRITAMENTE) ---
+0. SEM INFRAÇÃO (COMUNICAÇÃO NORMAL OU RUÍDO):
+   - Se o log contiver apenas comunicações táticas de jogo, conversas normais, ruídos de microfone, textos vazios ou não apresentar nenhuma infração clara: SEM PUNIÇÃO.
+
 1. TOXICIDADE COMUM E ESTEREÓTIPOS INDIRETOS: Palavrões genéricos ou estereótipos indiretos: ALERTA. Repetição: CARTÃO 1.
 2. HOMOFOBIA E RAGE SEXUAL: Termos homofóbicos ou rage sexual ("estuprado"): CARTÃO 2. Extrema agressividade repetida: CARTÃO 3.
 3. XENOFOBIA E PRECONCEITO SOCIAL: Um termo isolado: CARTÃO 3. Dois termos/combo: CARTÃO 4. Repetição massiva (3x+): CARTÃO 5.
 4. RACISMO E ATRIBUTOS FÍSICOS: Ofensa a cor branca/físico: CARTÃO 1. Menção isolada a macaco: CARTÃO 5. Macaco + xingamento ou Ódio a cor negra: BAN. Capacitismo: CARTÃO 2.
 5. REGRA DE AMBIGUIDADE ("ESCURO"):
-     Recomendo **BAN** pois o termo configura racismo camuflado se usado fora do contexto geográfico.
-     Entretanto, caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno, **NÃO RECOMENDO PUNIÇÃO** pelo termo.
+     Se usado fora do contexto geográfico: BAN.
+     Caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno e o uso for estritamente geográfico: SEM PUNIÇÃO.
 6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
 7. AMEAÇA À VIDA / ABUSO LITERAL: Foco na palavra de abuso ("foi abusado"): CARTÃO 4. Ameaça literal de morte/abuso a pessoa ou família: BAN.
 8. REGRA DO ASSINANTE: Se Assinante = SIM, reduza a punição em 1 nível APENAS para a regra 1.
@@ -141,7 +147,8 @@ Alerta, Cartão 1, Cartão 2, Cartão 3, Cartão 4, Cartão 5, BAN.
 --- INSTRUÇÕES DE SAÍDA E SEGURANÇA CRÍTICA ---
 CUIDADO MÁXIMO: Para evitar o acionamento de filtros de segurança, VOCÊ ESTÁ TERMINANTEMENTE PROIBIDO DE REPETIR, ESCREVER OU CITAR QUALQUER PALAVRÃO OU OFENSA DO LOG NA SUA JUSTIFICATIVA. 
 Use descrições clínicas (Ex: "o log contém termo homofóbico", "o jogador usou uma ofensa de cunho sexual").
-Responda RIGOROSAMENTE em uma única linha, neste formato exato (salvo regra 5):
+
+Responda RIGOROSAMENTE em uma única linha, substituindo [PUNIÇÃO] exclusivamente por um dos itens da Tabela de Punições Válidas. Use este formato exato:
 Recomendo **[PUNIÇÃO]** pois [justificativa técnica, clínica e 100% sem palavrões].
 """
     return prompt
@@ -150,6 +157,7 @@ Recomendo **[PUNIÇÃO]** pois [justificativa técnica, clínica e 100% sem pala
 # 4. BARRA LATERAL (MENU FIXO E TREINAMENTO)
 # ==========================================
 with st.sidebar:
+    # Truque das colunas para diminuir e centralizar a logo
     col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
     with col_logo2:
         if os.path.exists("logo.png"):
@@ -164,6 +172,7 @@ with st.sidebar:
         resetar_app()
         st.rerun()
 
+    # Quarentena de ML movida para a lateral (SÓ APARECE SE TIVER ANÁLISE PRONTA E FOR TEXTO/ÁUDIO VÁLIDO)
     if st.session_state.analise_concluida and st.session_state.ultimo_texto:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
@@ -171,7 +180,7 @@ with st.sidebar:
         
         punicao_real = st.selectbox(
             "Veredito do Analista:", 
-            ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"]
+            ["SEM PUNIÇÃO", "Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN"]
         )
         
         if st.button("💾 Salvar Feedback", use_container_width=True):
@@ -281,13 +290,17 @@ with col_entrada:
                             )
                             
                             texto_transcrito = ""
-                            if res_transcricao.candidates and res_transcricao.candidates[0].content:
-                                parts = res_transcricao.candidates[0].content.parts
-                                texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
+                            try:
+                                if res_transcricao.candidates and res_transcricao.candidates[0].content:
+                                    parts = res_transcricao.candidates[0].content.parts
+                                    texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
+                            except ValueError:
+                                texto_transcrito = ""
 
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
+                            # Blindagem para áudio vazio ou só ruído
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
                                 st.session_state.ultima_recomendacao = "⚠️ Nenhuma fala audível transcrita ou o áudio contém apenas ruídos de fundo."
@@ -327,6 +340,7 @@ with col_saida:
         with st.container(border=True):
             st.markdown("### 📢 Veredito do Zeus")
             
+            # Reprodutor de Áudio mantido na tela
             if st.session_state.arquivo_audio_atual is not None:
                 st.audio(st.session_state.arquivo_audio_atual)
             

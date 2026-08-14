@@ -256,7 +256,11 @@ with col_entrada:
                             arquivo_gemini = genai.upload_file(temp_path)
                             prompt_escrivao = "Transcreva EXATAMENTE as palavras audíveis do áudio, sem adivinhar contexto."
                             
-                            res_transcricao = model_escrivao.generate_content([prompt_escrivao, arquivo_gemini], generation_config={"temperature": 0.0})
+                            res_transcricao = model_escrivao.generate_content(
+                             [prompt_escrivao, arquivo_gemini], 
+                             generation_config={"temperature": 0.0},
+                            safety_settings=filtros_seguranca
+)
                             texto_transcrito = res_transcricao.text
                             
                             genai.delete_file(arquivo_gemini.name)

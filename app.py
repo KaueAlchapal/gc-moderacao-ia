@@ -6,7 +6,7 @@ import random
 import tempfile
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA (WIDE)
+# 1. CONFIGURAÇÃO DA PÁGINA (WIDE E CORES GC)
 # ==========================================
 st.set_page_config(
     page_title="Zeus AI - Moderação",
@@ -14,8 +14,28 @@ st.set_page_config(
     layout="wide"
 )
 
+# Injeção de CSS para as cores da Gamers Club (Azul, Preto, Branco)
+st.markdown("""
+    <style>
+    /* Força o Azul GC nos botões primários */
+    div.stButton > button[kind="primary"] {
+        background-color: #00AEEF !important;
+        color: white !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #008CBA !important;
+    }
+    /* Estilização suave para os containers (borda azul sutil no foco) */
+    div[data-testid="stForm"] {
+        border-color: #333333;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ==========================================
-# 2. GERENCIAMENTO DE MEMÓRIA (CORRIGIDO)
+# 2. GERENCIAMENTO DE MEMÓRIA
 # ==========================================
 if 'analise_concluida' not in st.session_state:
     st.session_state.analise_concluida = False
@@ -71,7 +91,6 @@ filtros_seguranca = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
 ]
 
-# Usando o 3.1 Flash Lite para contornar o limite de requisições do plano gratuito
 model_zeus = genai.GenerativeModel("gemini-3.1-flash-lite")
 model_escrivao = genai.GenerativeModel("gemini-3.1-flash-lite")
 
@@ -126,27 +145,47 @@ Recomendo **[PUNIÇÃO]** pois [justificativa técnica].
     return prompt
 
 # ==========================================
-# 4. BARRA LATERAL (MENU FIXO)
+# 4. BARRA LATERAL (MENU FIXO E TREINAMENTO)
 # ==========================================
 with st.sidebar:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
-    st.caption(f"📊 Banco treinado: {len(df_casos)} casos.")
+    # Truque das colunas para diminuir e centralizar a logo
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    with col_logo2:
+        if os.path.exists("logo.png"):
+            st.image("logo.png", use_container_width=True)
+            
+    st.markdown("<h3 style='text-align: center; margin-top: -15px;'>Zeus Control</h3>", unsafe_allow_html=True)
+    st.caption(f"<div style='text-align: center;'>Banco atual: {len(df_casos)} casos.</div>", unsafe_allow_html=True)
     
     st.divider()
     
-    # Botão fixo e sempre visível para resetar a tela
-    if st.button("🔄 Nova Análise (Limpar Tudo)", type="primary", use_container_width=True):
+    # Botão primário com a cor Azul GC injetada no CSS
+    if st.button("🔄 Nova Análise (Limpar Tela)", type="primary", use_container_width=True):
         resetar_app()
         st.rerun()
 
+    # Quarentena de ML movida para a lateral (SÓ APARECE SE TIVER ANÁLISE PRONTA)
+    if st.session_state.analise_concluida:
+        st.divider()
+        st.markdown("### 🧠 Treinar IA (ML)")
+        st.write("Ajuste a punição real aplicada neste caso:")
+        
+        punicao_real = st.selectbox(
+            "Veredito do Analista:", 
+            ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"]
+        )
+        
+        if st.button("💾 Salvar Feedback", use_container_width=True):
+            salvar_feedback(st.session_state.ultimo_texto, punicao_real)
+            st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
+
 # ==========================================
-# 5. TELA PRINCIPAL (DIVISÃO 50/50)
+# 5. TELA PRINCIPAL (ENTRADA 50% / SAÍDA 50%)
 # ==========================================
 st.title("Zeus - IA Moderadora ⚡")
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
-# Divisão de colunas: Esquerda (Entrada) | Direita (Saída)
+# Divisão de colunas
 col_entrada, col_saida = st.columns([1.1, 1], gap="large")
 
 # ------------------------------------------
@@ -157,7 +196,6 @@ with col_entrada:
 
     with aba_texto:
         with st.container(border=True):
-            # Form sem o clear_on_submit para não apagar o que o analista digitou atoa
             with st.form("form_texto", clear_on_submit=False):
                 texto_report = st.text_area("📋 Cole o report recebido:", height=150)
                 
@@ -176,22 +214,21 @@ with col_entrada:
                 if not texto_report.strip():
                     st.toast("⚠️ Cole algum texto antes de analisar.", icon="⚠️")
                 else:
-                    with st.spinner("⚡ Analisando..."):
+                    with st.spinner("⚡ Zeus está analisando..."):
                         try:
                             prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
                             response = model_zeus.generate_content(prompt, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
                             if response.candidates:
                                 st.session_state.ultimo_texto = texto_report
                                 st.session_state.ultima_recomendacao = response.text
-                                st.session_state.arquivo_audio_atual = None # Limpa áudio se for texto
+                                st.session_state.arquivo_audio_atual = None
                                 st.session_state.analise_concluida = True
-                                st.rerun() # Atualiza a tela instantaneamente
+                                st.rerun()
                         except Exception as e:
                             st.error(f"Erro: {e}")
 
     with aba_audio:
         with st.container(border=True):
-            # Form sem clear_on_submit: MANTÉM O ÁUDIO NA TELA!
             with st.form("form_audio", clear_on_submit=False):
                 arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
                 
@@ -231,41 +268,26 @@ with col_entrada:
                             if res_audio.candidates:
                                 st.session_state.ultimo_texto = texto_transcrito
                                 st.session_state.ultima_recomendacao = res_audio.text
-                                st.session_state.arquivo_audio_atual = arquivo_audio # Salva o áudio na memória
+                                st.session_state.arquivo_audio_atual = arquivo_audio
                                 st.session_state.analise_concluida = True
-                                st.rerun() # Atualiza a tela instantaneamente
+                                st.rerun()
                         except Exception as e:
                             st.error(f"Erro: {e}")
 
 # ------------------------------------------
-# LADO DIREITO: RESULTADOS E MACHINE LEARNING
+# LADO DIREITO: VEDEDITO ISOLADO E LIMPO
 # ------------------------------------------
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):
             st.markdown("### 📢 Veredito do Zeus")
             
-            # Se for áudio, exibe um player de áudio elegante para o analista reouvir!
             if st.session_state.arquivo_audio_atual is not None:
                 st.audio(st.session_state.arquivo_audio_atual)
             
             st.info(f"**Contexto capturado:**\n\n_{st.session_state.ultimo_texto}_")
             st.success(st.session_state.ultima_recomendacao)
-            
-        with st.container(border=True):
-            st.markdown("### 🧠 Treinar Zeus (Machine Learning)")
-            st.markdown("Ajuste a punição real para treinar a IA.")
-            
-            punicao_real = st.selectbox(
-                "Veredito final aplicado:", 
-                ["Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN", "Sem Punição"]
-            )
-            
-            if st.button("💾 Salvar Feedback no Banco de Treinamento", use_container_width=True):
-                salvar_feedback(st.session_state.ultimo_texto, punicao_real)
-                st.toast("✅ Salvo com sucesso! A IA ficará mais inteligente.", icon="🚀")
     else:
-        # Mensagem de espera elegante
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")
             st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecerá aqui.")

@@ -4,6 +4,7 @@ import google.generativeai as genai
 import os
 import random
 import tempfile
+import time
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA (WIDE E CORES GC)
@@ -17,7 +18,6 @@ st.set_page_config(
 # Injeção de CSS para as cores da Gamers Club (Azul, Preto, Branco)
 st.markdown("""
     <style>
-    /* Força o Azul GC nos botões primários */
     div.stButton > button[kind="primary"] {
         background-color: #00AEEF !important;
         color: white !important;
@@ -27,7 +27,6 @@ st.markdown("""
     div.stButton > button[kind="primary"]:hover {
         background-color: #008CBA !important;
     }
-    /* Estilização suave para os containers (borda azul sutil no foco) */
     div[data-testid="stForm"] {
         border-color: #333333;
     }
@@ -148,7 +147,6 @@ Recomendo **[PUNIÇÃO]** pois [justificativa técnica].
 # 4. BARRA LATERAL (MENU FIXO E TREINAMENTO)
 # ==========================================
 with st.sidebar:
-    # Truque das colunas para diminuir e centralizar a logo
     col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
     with col_logo2:
         if os.path.exists("logo.png"):
@@ -159,12 +157,10 @@ with st.sidebar:
     
     st.divider()
     
-    # Botão primário com a cor Azul GC injetada no CSS
     if st.button("🔄 Nova Análise (Limpar Tela)", type="primary", use_container_width=True):
         resetar_app()
         st.rerun()
 
-    # Quarentena de ML movida para a lateral (SÓ APARECE SE TIVER ANÁLISE PRONTA E FOR TEXTO/ÁUDIO VÁLIDO)
     if st.session_state.analise_concluida and st.session_state.ultimo_texto:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
@@ -185,7 +181,6 @@ with st.sidebar:
 st.title("Zeus - IA Moderadora ⚡")
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
-# Divisão de colunas
 col_entrada, col_saida = st.columns([1.1, 1], gap="large")
 
 # ------------------------------------------
@@ -218,14 +213,22 @@ with col_entrada:
                         try:
                             prompt = construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
                             response = model_zeus.generate_content(prompt, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
-                            if response.candidates:
+                            
+                            texto_resposta = ""
+                            if response.candidates and response.candidates[0].content:
+                                parts = response.candidates[0].content.parts
+                                texto_resposta = "".join([p.text for p in parts if hasattr(p, 'text')])
+
+                            if not texto_resposta:
+                                st.error("⚠️ O filtro de segurança da API impediu a exibição desta análise.")
+                            else:
                                 st.session_state.ultimo_texto = texto_report
-                                st.session_state.ultima_recomendacao = response.text
+                                st.session_state.ultima_recomendacao = texto_resposta
                                 st.session_state.arquivo_audio_atual = None
                                 st.session_state.analise_concluida = True
                                 st.rerun()
                         except Exception as e:
-                            st.error(f"Erro: {e}")
+                            st.error(f"Erro ao analisar texto: {e}")
 
     with aba_audio:
         with st.container(border=True):
@@ -247,14 +250,26 @@ with col_entrada:
                 if arquivo_audio is None:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
-                    with st.spinner("✍️ Escrivão transcrevendo e Zeus julgando..."):
+                    with st.spinner("✍️ Processando áudio e gerando laudo forense..."):
                         try:
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
                             arquivo_gemini = genai.upload_file(temp_path)
-                            prompt_escrivao = "Transcreva EXATAMENTE as palavras audíveis do áudio, sem adivinhar contexto."
+                            
+                            # Aguarda o processamento do arquivo no servidor do Google
+                            while arquivo_gemini.state.name == "PROCESSING":
+                                time.sleep(0.5)
+                                arquivo_gemini = genai.get_file(arquivo_gemini.name)
+
+                            prompt_escrivao = """
+                            [CONTEXTO DE MODERAÇÃO FORENSE E AUDITORIA DISCIPLINAR DE ESPORTS]
+                            Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio do chat de voz do jogo CS2 sem qualquer censura, filtro, alteração ou omissão.
+                            Você é uma ferramenta automatizada de auditoria de provas em denúncias de toxicidade.
+                            NÃO aplique filtros morais. Transcreva palavra por palavra o que é falado, mesmo que contenha palavrões, insultos ou termos graves.
+                            Retorne APENAS o texto falado.
+                            """
                             
                             res_transcricao = model_escrivao.generate_content(
                                 [prompt_escrivao, arquivo_gemini], 
@@ -262,38 +277,47 @@ with col_entrada:
                                 safety_settings=filtros_seguranca
                             )
                             
-                            # BLINDAGEM: Tenta ler o texto. Se o áudio for mudo, salva como vazio.
-                            try:
-                                texto_transcrito = res_transcricao.text
-                            except ValueError:
-                                texto_transcrito = ""
-                            
-                            # Limpeza imediata do arquivo da nuvem do Google
+                            texto_transcrito = ""
+                            if res_transcricao.candidates and res_transcricao.candidates[0].content:
+                                parts = res_transcricao.candidates[0].content.parts
+                                texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
+
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
-                            # Validação: Se não houver fala, para por aqui
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
-                                st.session_state.ultima_recomendacao = "⚠️ Nenhuma fala humana audível detectada neste arquivo."
+                                st.session_state.ultima_recomendacao = "⚠️ Nenhuma fala audível transcrita ou o áudio contém apenas ruídos de fundo."
                                 st.session_state.arquivo_audio_atual = arquivo_audio
                                 st.session_state.analise_concluida = True
                                 st.rerun()
                             else:
                                 prompt_audio = construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
-                                res_audio = model_zeus.generate_content(prompt_audio, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
+                                res_audio = model_zeus.generate_content(
+                                    prompt_audio, 
+                                    safety_settings=filtros_seguranca, 
+                                    generation_config={"temperature": 0.0}
+                                )
 
-                                if res_audio.candidates:
-                                    st.session_state.ultimo_texto = texto_transcrito
-                                    st.session_state.ultima_recomendacao = res_audio.text
-                                    st.session_state.arquivo_audio_atual = arquivo_audio
-                                    st.session_state.analise_concluida = True
-                                    st.rerun()
+                                texto_recomendacao = ""
+                                if res_audio.candidates and res_audio.candidates[0].content:
+                                    parts = res_audio.candidates[0].content.parts
+                                    texto_recomendacao = "".join([p.text for p in parts if hasattr(p, 'text')])
+
+                                if not texto_recomendacao:
+                                    texto_recomendacao = "⚠️ A análise gerou uma resposta bloqueada pelos filtros de segurança do provedor."
+
+                                st.session_state.ultimo_texto = texto_transcrito
+                                st.session_state.ultima_recomendacao = texto_recomendacao
+                                st.session_state.arquivo_audio_atual = arquivo_audio
+                                st.session_state.analise_concluida = True
+                                st.rerun()
+
                         except Exception as e:
-                            st.error(f"Erro no processamento do áudio: {e}")
+                            st.error(f"Erro ao processar áudio: {e}")
 
 # ------------------------------------------
-# LADO DIREITO: VEDEDITO ISOLADO E LIMPO
+# LADO DIREITO: VEREDITO ISOLADO E LIMPO
 # ------------------------------------------
 with col_saida:
     if st.session_state.analise_concluida:
@@ -303,7 +327,6 @@ with col_saida:
             if st.session_state.arquivo_audio_atual is not None:
                 st.audio(st.session_state.arquivo_audio_atual)
             
-            # Se a IA não escutou nada, mostra aviso amarelo em vez de sucesso
             if not st.session_state.ultimo_texto.strip():
                 st.warning(st.session_state.ultima_recomendacao)
             else:
@@ -312,4 +335,4 @@ with col_saida:
     else:
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")
-            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecerá aqui.")
+            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecer aqui.")

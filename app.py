@@ -244,7 +244,7 @@ with col_saida:
             if not st.session_state.ultimo_texto.strip():
                 st.warning(st.session_state.ultima_recomendacao)
             else:
-                st.info(f"**Contexto capturado:**\n\n_{st.session_state.ultimo_texto}_")
+                st.info(f"**Contexto capturado:**\n\n{st.session_state.ultimo_texto}")
                 st.success(st.session_state.ultima_recomendacao)
     else:
         with st.container(border=True):

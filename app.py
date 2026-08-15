@@ -4,14 +4,11 @@ import os
 import tempfile
 import time
 
-# Importando os módulos locais criados
 import auth
 import data_manager
 import ai_service
 
-# ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA E CSS
-# ==========================================
+            #Confi da página/CSS
 st.set_page_config(page_title="Zeus AI - Moderação", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -22,9 +19,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. AUTENTICAÇÃO E MEMÓRIA
-# ==========================================
+
+                # AUTENTICAÇÃO E MEMÓRIA
 auth.inicializar_autenticacao()
 auth.verificar_acesso() # Se não passar, a tela de login bloqueia aqui
 
@@ -40,16 +36,14 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-# ==========================================
-# 3. INICIALIZAÇÃO DE DADOS E IA
-# ==========================================
+
+                # INICIALIZAÇÃO DE DADOS E IA
+
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 model_zeus, model_escrivao, filtros_seguranca = ai_service.obter_modelos_e_filtros()
 
-# ==========================================
-# 4. BARRA LATERAL (MENU)
-# ==========================================
+        # MENU LATERAL
 with st.sidebar:
     col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
     with col_logo2:
@@ -84,9 +78,7 @@ with st.sidebar:
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
 
-# ==========================================
-# 5. TELA PRINCIPAL (UI DE ANÁLISE)
-# ==========================================
+    # TELA PRINCIPAL (UI DE ANÁLISE)
 st.title("Zeus - IA Moderadora ⚡", anchor=False)
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
@@ -112,7 +104,7 @@ with col_entrada:
 
             if submit_texto:
                 if auth.bloqueio_limite_convidado():
-                    pass # Função já exibe o erro
+                    pass 
                 elif not texto_report.strip():
                     st.toast("⚠️ Cole algum texto antes de analisar.", icon="⚠️")
                 else:
@@ -229,9 +221,7 @@ with col_entrada:
                         except Exception as e:
                             st.error(f"Erro ao processar áudio: {e}")
 
-# ------------------------------------------
-# LADO DIREITO: VEREDITO
-# ------------------------------------------
+        # LADO DIREITO: VEREDITO
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):

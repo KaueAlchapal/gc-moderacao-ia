@@ -4,7 +4,7 @@ import os
 def inicializar_autenticacao():
     senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
     
-    # BLINDAGEM DE VERSÃO: Suporta tanto servidores novos quanto antigos
+    # BLINDAGEM DE VERSÃO
     try:
         senha_url = st.query_params.get("auth", "")
         convidado_url = st.query_params.get("guest", "")
@@ -34,8 +34,8 @@ def verificar_acesso():
         
         with col2:
             with st.container(border=True):
-               # 1. CABEÇALHO CENTRALIZADO
-                # Mudamos a proporção para 2, 1, 2 para diminuir a coluna central
+
+               # CABEÇALHO CENTRALIZADO
                 col_logo1, col_logo2, col_logo3 = st.columns([2.5, 1, 2.5]) 
                 with col_logo2:
                     if os.path.exists("logo.png"):
@@ -46,7 +46,7 @@ def verificar_acesso():
                 
                 st.divider()
                 
-                # 2. OPÇÕES LADO A LADO
+                # OPÇÕES LADO A LADO
                 col_admin, col_guest = st.columns(2, gap="large")
                 
                 with col_admin:
@@ -59,7 +59,7 @@ def verificar_acesso():
                         if senha_input == senha_correta:
                             st.session_state.is_admin = True
                             
-                            # BLINDAGEM DE VERSÃO: Gravando o link mágico
+                            # BLINDAGEM DE VERSÃO
                             try:
                                 st.query_params["auth"] = senha_correta
                             except AttributeError:
@@ -79,7 +79,7 @@ def verificar_acesso():
                     if st.button("Acessar Modo Convidado", use_container_width=True):
                         st.session_state.guest_mode = True
                         
-                        # BLINDAGEM DE VERSÃO: Gravando o estado de convidado
+                        # BLINDAGEM DE VERSÃO (convidado)
                         try:
                             st.query_params["guest"] = "true"
                         except AttributeError:

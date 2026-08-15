@@ -1,10 +1,35 @@
+import streamlit as st
+import os
+
+def inicializar_autenticacao():
+    senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
+    
+    # BLINDAGEM DE VERSÃO: Suporta tanto servidores novos quanto antigos
+    try:
+        senha_url = st.query_params.get("auth", "")
+        convidado_url = st.query_params.get("guest", "")
+    except AttributeError:
+        # Fallback para versões mais antigas do Streamlit Cloud
+        params = st.experimental_get_query_params()
+        senha_url = params.get("auth", [""])[0]
+        convidado_url = params.get("guest", [""])[0]
+
+    if 'is_admin' not in st.session_state:
+        st.session_state.is_admin = (senha_url == senha_correta)
+    
+    if 'guest_mode' not in st.session_state:
+        st.session_state.guest_mode = (convidado_url == "true")
+        
+    if 'guest_uses' not in st.session_state:
+        st.session_state.guest_uses = 0
+
 def verificar_acesso():
     senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
     
     # Se não for admin e não clicou em modo convidado, mostra a porta
     if not st.session_state.is_admin and not st.session_state.guest_mode:
         
-        # Aumentamos um pouco a coluna central (2.5) para caber os itens lado a lado
+        # Coluna central ligeiramente mais larga para acomodar as duas opções
         col1, col2, col3 = st.columns([1, 2.5, 1])
         
         with col2:
@@ -15,7 +40,7 @@ def verificar_acesso():
                     if os.path.exists("logo.png"):
                         st.image("logo.png", use_container_width=True)
                 
-                st.markdown("<h2 style='text-align: center;'>⚡ Zeus AI</h2>", unsafe_allow_html=True)
+                st.markdown("<h2 style='text-align: center;' anchor=False>⚡ Zeus AI</h2>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: #a0a0a0;'>Auditoria disciplinar e forense para eSports.</p>", unsafe_allow_html=True)
                 
                 st.divider()
@@ -32,7 +57,13 @@ def verificar_acesso():
                     if st.button("Entrar no Zeus", type="primary", use_container_width=True):
                         if senha_input == senha_correta:
                             st.session_state.is_admin = True
-                            st.query_params["auth"] = senha_correta
+                            
+                            # BLINDAGEM DE VERSÃO: Gravando o link mágico
+                            try:
+                                st.query_params["auth"] = senha_correta
+                            except AttributeError:
+                                st.experimental_set_query_params(auth=senha_correta)
+                                
                             st.rerun()
                         else:
                             st.error("Chave inválida.")
@@ -41,13 +72,27 @@ def verificar_acesso():
                     st.markdown("### 👤 Portfólio")
                     st.caption("Visitante? Teste a IA na prática.")
                     
-                    # Espaçamento invisível para alinhar o botão do visitante com o botão do Admin
+                    # Espaçamento invisível para alinhar os botões
                     st.markdown("<br>", unsafe_allow_html=True)
                     
                     if st.button("Acessar Modo Convidado", use_container_width=True):
                         st.session_state.guest_mode = True
-                        st.query_params["guest"] = "true"
+                        
+                        # BLINDAGEM DE VERSÃO: Gravando o estado de convidado
+                        try:
+                            st.query_params["guest"] = "true"
+                        except AttributeError:
+                            st.experimental_set_query_params(guest="true")
+                            
                         st.rerun()
-        
-        # Interrompe a renderização do app aqui
         st.stop()
+
+def bloqueio_limite_convidado():
+    if not st.session_state.is_admin and st.session_state.guest_uses >= 2:
+        st.error("🔒 Limite de testes atingido! Insira a chave corporativa para continuar usando.")
+        return True
+    return False
+
+def registrar_uso_convidado():
+    if not st.session_state.is_admin:
+        st.session_state.guest_uses += 1

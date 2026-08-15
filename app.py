@@ -87,7 +87,7 @@ with st.sidebar:
 # ==========================================
 # 5. TELA PRINCIPAL (UI DE ANÁLISE)
 # ==========================================
-st.title("Zeus - IA Moderadora ⚡")
+st.title("Zeus - IA Moderadora ⚡", anchor=False)
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
 col_entrada, col_saida = st.columns([1.1, 1], gap="large")

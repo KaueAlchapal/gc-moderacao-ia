@@ -51,7 +51,7 @@ def verificar_acesso():
                 
                 with col_admin:
                     st.markdown("### 🛡️ Equipe GC")
-                    st.caption("Acesso irrestrito para operação.")
+                    st.caption("Acesso ilimitado para operação diária.")
                     
                     senha_input = st.text_input("Chave corporativa:", type="password", placeholder="Insira a chave...", label_visibility="collapsed")
                     
@@ -70,8 +70,8 @@ def verificar_acesso():
                             st.error("Chave inválida.")
                 
                 with col_guest:
-                    st.markdown("### 👤 Portfólio")
-                    st.caption("Visitante? Teste a IA na prática.")
+                    st.markdown("### 👤 Visitante")
+                    st.caption("Teste a IA na prática.")
                     
                     # Espaçamento invisível para alinhar os botões
                     st.markdown("<br>", unsafe_allow_html=True)

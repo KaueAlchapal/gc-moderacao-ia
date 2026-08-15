@@ -43,20 +43,24 @@ df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 model_zeus, model_escrivao, filtros_seguranca = ai_service.obter_modelos_e_filtros()
 
-        # MENU LATERAL
+        # ==========================================
+# BARRA LATERAL (MENU)
+# ==========================================
 with st.sidebar:
-    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    # 1. Logo ainda menor na barra lateral usando proporção [1.5, 1, 1.5]
+    col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
     with col_logo2:
         if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
             
-    st.markdown("<h3 style='text-align: center; margin-top: -15px;'>Zeus Control</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; margin-top: -15px;' anchor=False>Zeus Control</h3>", unsafe_allow_html=True)
     
+    # 2. Informações compactadas (Sem a caixa verde gigante)
     if st.session_state.is_admin:
-        st.success("✅ Acesso Corporativo Ativo")
-        st.caption(f"<div style='text-align: center;'>Banco treinado: {len(df_casos)} casos.</div>", unsafe_allow_html=True)
+        # Uma linha sutil verde indicando o status e o banco
+        st.markdown(f"<p style='text-align: center; color: #4CAF50; font-size: 14px; margin-top: -10px;'>✅ Corporativo | {len(df_casos)} casos salvos</p>", unsafe_allow_html=True)
     else:
-        st.warning(f"👀 Modo Convidado: {st.session_state.guest_uses}/2 usos")
+        st.warning(f"👀 Convidado: {st.session_state.guest_uses}/2 usos")
     
     st.divider()
     
@@ -64,10 +68,27 @@ with st.sidebar:
         resetar_app()
         st.rerun()
 
-    # Treinamento (Exclusivo Admin)
+    # 3. Treinamento (Exclusivo Admin) otimizado para economizar espaço
     if st.session_state.is_admin and st.session_state.analise_concluida and st.session_state.ultimo_texto:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
+        st.write("Ajuste a punição real aplicada:")
+        
+        punicao_real = st.selectbox(
+            "Veredito:", 
+            ["SEM PUNIÇÃO", "Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN"],
+            label_visibility="collapsed" # Esconde a palavra "Veredito:" para subir a caixinha
+        )
+        
+        if st.button("💾 Salvar Feedback", use_container_width=True):
+            # Lembre-se de ajustar aqui dependendo se você modularizou o código (data_manager) ou não
+            salvar_feedback(st.session_state.ultimo_texto, punicao_real) 
+            st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
+
+    # Treinamento (Exclusivo Admin)
+    if st.session_state.is_admin and st.session_state.analise_concluida and st.session_state.ultimo_texto:
+        st.divider()
+        st.markdown("### 🧠 Treinar IA (Machine Learning)")
         st.write("Ajuste a punição real aplicada neste caso:")
         punicao_real = st.selectbox(
             "Veredito do Analista:", 

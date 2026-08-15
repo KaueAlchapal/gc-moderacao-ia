@@ -1,68 +1,53 @@
-import streamlit as st
-import os
-
-def inicializar_autenticacao():
-    senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
-    
-    # Lê o que está na URL atual
-    senha_url = st.query_params.get("auth", "")
-    convidado_url = st.query_params.get("guest", "")
-
-    if 'is_admin' not in st.session_state:
-        st.session_state.is_admin = (senha_url == senha_correta)
-    
-    if 'guest_mode' not in st.session_state:
-        st.session_state.guest_mode = (convidado_url == "true")
-        
-    if 'guest_uses' not in st.session_state:
-        st.session_state.guest_uses = 0
-
 def verificar_acesso():
     senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
     
     # Se não for admin e não clicou em modo convidado, mostra a porta
     if not st.session_state.is_admin and not st.session_state.guest_mode:
-        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        # Aumentamos um pouco a coluna central (2.5) para caber os itens lado a lado
+        col1, col2, col3 = st.columns([1, 2.5, 1])
+        
         with col2:
             with st.container(border=True):
-                if os.path.exists("logo.png"):
-                    st.image("logo.png", width=100)
-                st.title("⚡ Zeus AI")
-                st.markdown("Auditoria disciplinar e forense para eSports.")
+                # 1. CABEÇALHO CENTRALIZADO
+                col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+                with col_logo2:
+                    if os.path.exists("logo.png"):
+                        st.image("logo.png", use_container_width=True)
+                
+                st.markdown("<h2 style='text-align: center;'>⚡ Zeus AI</h2>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #a0a0a0;'>Auditoria disciplinar e forense para eSports.</p>", unsafe_allow_html=True)
                 
                 st.divider()
                 
-                st.markdown("### Acesso Restrito (Equipe GC)")
-                senha_input = st.text_input("Insira a chave de acesso corporativa:", type="password")
-                if st.button("Entrar no Zeus", type="primary", use_container_width=True):
-                    if senha_input == senha_correta:
-                        st.session_state.is_admin = True
-                        
-                        # O TRUQUE MÁGICO: Atualiza a URL no navegador do usuário automaticamente!
-                        st.query_params["auth"] = senha_correta
-                        
+                # 2. OPÇÕES LADO A LADO
+                col_admin, col_guest = st.columns(2, gap="large")
+                
+                with col_admin:
+                    st.markdown("### 🛡️ Equipe GC")
+                    st.caption("Acesso irrestrito para operação.")
+                    
+                    senha_input = st.text_input("Chave corporativa:", type="password", placeholder="Insira a chave...", label_visibility="collapsed")
+                    
+                    if st.button("Entrar no Zeus", type="primary", use_container_width=True):
+                        if senha_input == senha_correta:
+                            st.session_state.is_admin = True
+                            st.query_params["auth"] = senha_correta
+                            st.rerun()
+                        else:
+                            st.error("Chave inválida.")
+                
+                with col_guest:
+                    st.markdown("### 👤 Portfólio")
+                    st.caption("Visitante? Teste a IA na prática.")
+                    
+                    # Espaçamento invisível para alinhar o botão do visitante com o botão do Admin
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    if st.button("Acessar Modo Convidado", use_container_width=True):
+                        st.session_state.guest_mode = True
+                        st.query_params["guest"] = "true"
                         st.rerun()
-                    else:
-                        st.error("Chave inválida. Tente novamente.")
-                
-                st.divider()
-                st.markdown("### Visitante / Portfólio")
-                st.write("Quer ver como a IA funciona na prática? Você tem direito a 2 análises de teste.")
-                if st.button("Entrar no Modo Convidado", use_container_width=True):
-                    st.session_state.guest_mode = True
-                    
-                    # Salva na URL que ele é um convidado para não bugar no F5
-                    st.query_params["guest"] = "true"
-                    
-                    st.rerun()
+        
+        # Interrompe a renderização do app aqui
         st.stop()
-
-def bloqueio_limite_convidado():
-    if not st.session_state.is_admin and st.session_state.guest_uses >= 2:
-        st.error("🔒 Limite de testes atingido! Insira a chave corporativa para continuar usando.")
-        return True
-    return False
-
-def registrar_uso_convidado():
-    if not st.session_state.is_admin:
-        st.session_state.guest_uses += 1

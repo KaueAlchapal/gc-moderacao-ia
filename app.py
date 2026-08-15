@@ -8,7 +8,9 @@ import auth
 import data_manager
 import ai_service
 
-            #Confi da página/CSS
+# ==========================================
+# CONFIGURAÇÃO DA PÁGINA E CSS
+# ==========================================
 st.set_page_config(page_title="Zeus AI - Moderação", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -19,8 +21,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-                # AUTENTICAÇÃO E MEMÓRIA
+# ==========================================
+# AUTENTICAÇÃO E MEMÓRIA
+# ==========================================
 auth.inicializar_autenticacao()
 auth.verificar_acesso() # Se não passar, a tela de login bloqueia aqui
 
@@ -36,18 +39,18 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-
-                # INICIALIZAÇÃO DE DADOS E IA
-
+# ==========================================
+# INICIALIZAÇÃO DE DADOS E IA
+# ==========================================
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 model_zeus, model_escrivao, filtros_seguranca = ai_service.obter_modelos_e_filtros()
 
-        # ==========================================
+# ==========================================
 # BARRA LATERAL (MENU)
 # ==========================================
 with st.sidebar:
-    # 1. Logo ainda menor na barra lateral usando proporção [1.5, 1, 1.5]
+    # 1. Logo compacta na barra lateral
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
     with col_logo2:
         if os.path.exists("logo.png"):
@@ -57,7 +60,6 @@ with st.sidebar:
     
     # 2. Informações compactadas (Sem a caixa verde gigante)
     if st.session_state.is_admin:
-        # Uma linha sutil verde indicando o status e o banco
         st.markdown(f"<p style='text-align: center; color: #4CAF50; font-size: 14px; margin-top: -10px;'>✅ Corporativo | {len(df_casos)} casos salvos</p>", unsafe_allow_html=True)
     else:
         st.warning(f"👀 Convidado: {st.session_state.guest_uses}/2 usos")
@@ -81,25 +83,12 @@ with st.sidebar:
         )
         
         if st.button("💾 Salvar Feedback", use_container_width=True):
-            # Lembre-se de ajustar aqui dependendo se você modularizou o código (data_manager) ou não
-            salvar_feedback(st.session_state.ultimo_texto, punicao_real) 
-            st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
-
-    # Treinamento (Exclusivo Admin)
-    if st.session_state.is_admin and st.session_state.analise_concluida and st.session_state.ultimo_texto:
-        st.divider()
-        st.markdown("### 🧠 Treinar IA (Machine Learning)")
-        st.write("Ajuste a punição real aplicada neste caso:")
-        punicao_real = st.selectbox(
-            "Veredito do Analista:", 
-            ["SEM PUNIÇÃO", "Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN"]
-        )
-        
-        if st.button("💾 Salvar Feedback", use_container_width=True):
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
 
-    # TELA PRINCIPAL (UI DE ANÁLISE)
+# ==========================================
+# TELA PRINCIPAL (UI DE ANÁLISE)
+# ==========================================
 st.title("Zeus - IA Moderadora ⚡", anchor=False)
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
@@ -242,7 +231,9 @@ with col_entrada:
                         except Exception as e:
                             st.error(f"Erro ao processar áudio: {e}")
 
-        # LADO DIREITO: VEREDITO
+# ==========================================
+# LADO DIREITO: VEREDITO
+# ==========================================
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):

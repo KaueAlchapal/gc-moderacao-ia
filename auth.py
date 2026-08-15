@@ -34,14 +34,15 @@ def verificar_acesso():
         
         with col2:
             with st.container(border=True):
-                # 1. CABEÇALHO CENTRALIZADO
-                col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+               # 1. CABEÇALHO CENTRALIZADO
+                # Mudamos a proporção para 2, 1, 2 para diminuir a coluna central
+                col_logo1, col_logo2, col_logo3 = st.columns([2.5, 1, 2.5]) 
                 with col_logo2:
                     if os.path.exists("logo.png"):
                         st.image("logo.png", use_container_width=True)
                 
                 st.markdown("<h2 style='text-align: center;' anchor=False>⚡ Zeus AI</h2>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; color: #a0a0a0;'>Auditoria disciplinar e forense para eSports.</p>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #a0a0a0; margin-top: -10px;'>Auditoria disciplinar e forense para eSports.</p>", unsafe_allow_html=True)
                 
                 st.divider()
                 

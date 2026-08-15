@@ -2,7 +2,7 @@ import streamlit as st
 import os
 
 def inicializar_autenticacao():
-    senha_correta = os.environ.get("SENHA_ZEUS", "cx_admin")
+    senha_correta = os.environ.get("SENHA_ZEUS") #boa tentativa, espertinho de plantão hahaha
     
     # BLINDAGEM DE VERSÃO
     try:

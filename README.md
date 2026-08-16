@@ -19,7 +19,7 @@ A infraestrutura do Zeus foi projetada com foco absoluto em **baixa latência** 
 
 ---
 
-## 🧠 Como o Zeus pensa? (Regras de Negócio)
+## Como o Zeus pensa? (Regras de Negócio)
 
 O modelo foi treinado para seguir rigorosamente as nossas **Regras de Ouro** de moderação:
 
@@ -34,9 +34,9 @@ O modelo foi treinado para seguir rigorosamente as nossas **Regras de Ouro** de 
 
 Para garantir manutenibilidade e seguir o padrão de *Clean Code*, o projeto é modularizado da seguinte forma:
 
-* `app.py`: O "Maestro". A interface gráfica principal (construída em Streamlit) que conecta o analista ao motor da IA.
-* `ai_service.py`: O "Cérebro". Contém as chaves de segurança, configurações de filtros e as engenharias de prompt (as leis do Zeus).
-* `auth.py`: O "Segurança". Roteador de acessos que gerencia logins da equipe e bloqueia abusos de visitantes externos.
+* `app.py`: A interface gráfica principal (construída em Streamlit) que conecta o analista ao motor da IA.
+* `ai_service.py`: Contém as chaves de segurança, configurações de filtros e as engenharias de prompt (as leis do Zeus).
+* `auth.py`: Roteador de acessos que gerencia logins da equipe e bloqueia abusos de visitantes externos.
 * `data_manager.py`: O "Arquivista". 
 * `casos.csv`: O nosso **Livro de Regras Vivo**. Um histórico de dados orgânicos que ensina o Zeus (via *Few-Shot Prompting*) como a equipe toma decisões.
 

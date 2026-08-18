@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import tempfile
 import time
@@ -39,16 +40,18 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-# ==========================================
-# INICIALIZAÇÃO DE DADOS E IA
-# ==========================================
+    # INICIALIZAÇÃO DE DADOS E IA
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
-model_zeus, model_escrivao, filtros_seguranca = ai_service.obter_modelos_e_filtros()
+model_zeus, model_escrivao, _ = ai_service.obter_modelos_e_filtros()
 
-# ==========================================
+filtros_seguranca = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
 # BARRA LATERAL (MENU)
-# ==========================================
 with st.sidebar:
     # 1. Logo compacta na barra lateral
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
@@ -86,9 +89,8 @@ with st.sidebar:
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
 
-# ==========================================
+
 # TELA PRINCIPAL (UI DE ANÁLISE)
-# ==========================================
 st.title("Zeus - IA Moderadora ⚡", anchor=False)
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
@@ -231,9 +233,7 @@ with col_entrada:
                         except Exception as e:
                             st.error(f"Erro ao processar áudio: {e}")
 
-# ==========================================
 # LADO DIREITO: VEREDITO
-# ==========================================
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):

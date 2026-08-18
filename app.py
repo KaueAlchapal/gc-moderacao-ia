@@ -164,25 +164,26 @@ with col_entrada:
                     )
                 submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
 
-            if submit_audio:
+        if submit_audio:
                 if auth.bloqueio_limite_convidado():
                     pass
                 elif arquivo_audio is None:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        # ETAPA 1: UPLOAD
+                        # ETAPA 1: UPLOAD (AGORA COM MIME TYPE FORÇADO)
                         with st.spinner("1/3 📤 Subindo arquivo para os servidores do Google..."):
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
-                            arquivo_gemini = genai.upload_file(temp_path)
+                            # Vacina 1: Passar o formato exato para a API não travar a leitura
+                            tipo_mime = arquivo_audio.type if arquivo_audio.type else "audio/wav"
+                            arquivo_gemini = genai.upload_file(temp_path, mime_type=tipo_mime)
                         
-                        # ETAPA 2: PROCESSAMENTO (AGORA COM LIMITE DE TEMPO)
+                        # ETAPA 2: PROCESSAMENTO 
                         with st.spinner("2/3 ⏳ Aguardando Google processar o áudio (Isso pode levar alguns segundos)..."):
                             tentativas = 0
-                            # Tenta por no máximo 1 minuto (30 tentativas de 2 segundos)
                             while arquivo_gemini.state.name == "PROCESSING" and tentativas < 30:
                                 time.sleep(2)
                                 arquivo_gemini = genai.get_file(arquivo_gemini.name)
@@ -195,20 +196,23 @@ with col_entrada:
                                 st.error("❌ Timeout: O Google demorou mais de 1 minuto para ler o arquivo e a conexão foi encerrada.")
                                 st.stop()
 
-                        # ETAPA 3: TRANSCRIÇÃO E JULGAMENTO
-                        with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras (Pode levar até 1 minuto)..."):
+                        # ETAPA 3: TRANSCRIÇÃO (AGORA COM TIMEOUT E PROMPT LIMPO)
+                        with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras (Isso pode levar até 1 minuto)..."):
+                            
+                            # Vacina 2: Retiramos as palavras-gatilho que travavam a IA no backend
                             prompt_escrivao = """
-                            [CONTEXTO DE MODERAÇÃO FORENSE E AUDITORIA DISCIPLINAR DE ESPORTS]
-                            Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio do chat de voz do jogo CS2 sem qualquer censura, filtro, alteração ou omissão.
-                            Você é uma ferramenta automatizada de auditoria de provas em denúncias de toxicidade.
-                            NÃO aplique filtros morais. Transcreva palavra por palavra o que é falado, mesmo que contenha palavrões, insultos ou termos graves.
+                            [CONTEXTO DE AUDITORIA FORENSE DE ESPORTS]
+                            Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio em texto.
+                            Mantenha a transcrição 100% fiel e exata ao áudio original, sem omitir ou censurar nenhuma palavra, para fins de auditoria legal e análise de infrações.
                             Retorne APENAS o texto falado.
                             """
                             
+                            # Vacina 3: Limite de 60 segundos para evitar o carregamento infinito
                             res_transcricao = model_escrivao.generate_content(
                                 [prompt_escrivao, arquivo_gemini], 
                                 generation_config={"temperature": 0.0},
-                                safety_settings=filtros_seguranca
+                                safety_settings=filtros_seguranca,
+                                request_options={"timeout": 60} 
                             )
                             
                             texto_transcrito = ""
@@ -216,19 +220,19 @@ with col_entrada:
                                 parts = res_transcricao.candidates[0].content.parts
                                 texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
 
-                            # Limpeza dos arquivos temporários
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
-                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas os filtros de segurança severos bloquearam a exibição do texto (ou não há voz inteligível)."
+                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas recusou a exibição do texto (ou não há voz inteligível)."
                             else:
                                 prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
                                 res_audio = model_zeus.generate_content(
                                     prompt_audio, 
                                     safety_settings=filtros_seguranca, 
-                                    generation_config={"temperature": 0.0}
+                                    generation_config={"temperature": 0.0},
+                                    request_options={"timeout": 60}
                                 )
 
                                 texto_recomendacao = ""

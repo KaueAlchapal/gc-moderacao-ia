@@ -164,25 +164,25 @@ with col_entrada:
                     )
                 submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
 
-        if submit_audio:
+            if submit_audio:
                 if auth.bloqueio_limite_convidado():
                     pass
                 elif arquivo_audio is None:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        # ETAPA 1: UPLOAD (AGORA COM MIME TYPE FORÇADO)
-                        with st.spinner("1/3 📤 Subindo arquivo para os servidores do Google..."):
+                        # ETAPA 1: UPLOAD SEGURO
+                        with st.spinner("1/3 📤 Preparando arquivo e subindo para o Google..."):
+                            arquivo_audio.seek(0) # VACINA 1: Garante que o arquivo seja lido do segundo zero
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
-                            # Vacina 1: Passar o formato exato para a API não travar a leitura
                             tipo_mime = arquivo_audio.type if arquivo_audio.type else "audio/wav"
                             arquivo_gemini = genai.upload_file(temp_path, mime_type=tipo_mime)
                         
-                        # ETAPA 2: PROCESSAMENTO 
-                        with st.spinner("2/3 ⏳ Aguardando Google processar o áudio (Isso pode levar alguns segundos)..."):
+                        # ETAPA 2: PROCESSAMENTO
+                        with st.spinner("2/3 ⏳ Aguardando Google processar o áudio..."):
                             tentativas = 0
                             while arquivo_gemini.state.name == "PROCESSING" and tentativas < 30:
                                 time.sleep(2)
@@ -190,29 +190,32 @@ with col_entrada:
                                 tentativas += 1
 
                             if arquivo_gemini.state.name == "FAILED":
-                                st.error("❌ Erro interno da API: O Google rejeitou ou falhou ao ler este arquivo de áudio.")
+                                st.error("❌ Erro interno da API: O Google rejeitou este arquivo de áudio.")
                                 st.stop()
                             elif arquivo_gemini.state.name == "PROCESSING":
-                                st.error("❌ Timeout: O Google demorou mais de 1 minuto para ler o arquivo e a conexão foi encerrada.")
+                                st.error("❌ Timeout: O Google demorou demais para ler a mídia.")
                                 st.stop()
 
-                        # ETAPA 3: TRANSCRIÇÃO (AGORA COM TIMEOUT E PROMPT LIMPO)
-                        with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras (Isso pode levar até 1 minuto)..."):
+                        # ETAPA 3: TRANSCRIÇÃO (COM PROTEÇÃO ANTI-LOOP)
+                        with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras..."):
                             
-                            # Vacina 2: Retiramos as palavras-gatilho que travavam a IA no backend
+                            # VACINA 2: Prompt instruindo a ignorar ruídos do jogo
                             prompt_escrivao = """
                             [CONTEXTO DE AUDITORIA FORENSE DE ESPORTS]
                             Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio em texto.
-                            Mantenha a transcrição 100% fiel e exata ao áudio original, sem omitir ou censurar nenhuma palavra, para fins de auditoria legal e análise de infrações.
+                            Mantenha a transcrição 100% fiel e exata ao áudio original, sem omitir ou censurar nenhuma palavra, para fins de auditoria legal.
+                            IGNORE ruídos de fundo, chiados, sons de teclado, tiros e passos do jogo. Foco apenas na voz humana.
                             Retorne APENAS o texto falado.
                             """
                             
-                            # Vacina 3: Limite de 60 segundos para evitar o carregamento infinito
+                            # VACINA 3: Temperatura 0.4 para pular ruídos e limite de tokens como freio de segurança
                             res_transcricao = model_escrivao.generate_content(
                                 [prompt_escrivao, arquivo_gemini], 
-                                generation_config={"temperature": 0.0},
-                                safety_settings=filtros_seguranca,
-                                request_options={"timeout": 60} 
+                                generation_config={
+                                    "temperature": 0.4, 
+                                    "max_output_tokens": 1500 
+                                },
+                                safety_settings=filtros_seguranca
                             )
                             
                             texto_transcrito = ""
@@ -225,14 +228,18 @@ with col_entrada:
 
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
-                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas recusou a exibição do texto (ou não há voz inteligível)."
+                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas recusou a exibição do texto (ou considerou apenas ruído)."
                             else:
                                 prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
+                                
+                                # A análise das regras volta para temp 0.0 (modo lógico), mas o limite de tokens continua para proteger a API
                                 res_audio = model_zeus.generate_content(
                                     prompt_audio, 
                                     safety_settings=filtros_seguranca, 
-                                    generation_config={"temperature": 0.0},
-                                    request_options={"timeout": 60}
+                                    generation_config={
+                                        "temperature": 0.0,
+                                        "max_output_tokens": 1500
+                                    }
                                 )
 
                                 texto_recomendacao = ""
@@ -241,7 +248,7 @@ with col_entrada:
                                     texto_recomendacao = "".join([p.text for p in parts if hasattr(p, 'text')])
 
                                 if not texto_recomendacao:
-                                    texto_recomendacao = "⚠️ A análise contém toxicidade tão extrema que a API impediu o Zeus de descrever a punição."
+                                    texto_recomendacao = "⚠️ A análise contém toxicidade tão extrema que a API impediu o Zeus de descrever a punição final."
 
                                 st.session_state.ultimo_texto = texto_transcrito
                                 st.session_state.ultima_recomendacao = texto_recomendacao

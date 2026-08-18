@@ -40,7 +40,9 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-    # INICIALIZAÇÃO DE DADOS E IA
+# ==========================================
+# INICIALIZAÇÃO DE DADOS E IA
+# ==========================================
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 model_zeus, model_escrivao, _ = ai_service.obter_modelos_e_filtros()
@@ -51,7 +53,10 @@ filtros_seguranca = {
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
+
+# ==========================================
 # BARRA LATERAL (MENU)
+# ==========================================
 with st.sidebar:
     # 1. Logo compacta na barra lateral
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
@@ -90,7 +95,9 @@ with st.sidebar:
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
 
 
+# ==========================================
 # TELA PRINCIPAL (UI DE ANÁLISE)
+# ==========================================
 st.title("Zeus - IA Moderadora ⚡", anchor=False)
 st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
 
@@ -157,7 +164,7 @@ with col_entrada:
                     )
                 submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
 
-           if submit_audio:
+            if submit_audio:
                 if auth.bloqueio_limite_convidado():
                     pass
                 elif arquivo_audio is None:
@@ -243,7 +250,9 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
+# ==========================================
 # LADO DIREITO: VEREDITO
+# ==========================================
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):

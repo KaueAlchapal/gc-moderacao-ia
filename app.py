@@ -157,24 +157,39 @@ with col_entrada:
                     )
                 submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
 
-            if submit_audio:
+           if submit_audio:
                 if auth.bloqueio_limite_convidado():
                     pass
                 elif arquivo_audio is None:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
-                    with st.spinner("✍️ Processando áudio e gerando laudo forense..."):
-                        try:
+                    try:
+                        # ETAPA 1: UPLOAD
+                        with st.spinner("1/3 📤 Subindo arquivo para os servidores do Google..."):
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
                             arquivo_gemini = genai.upload_file(temp_path)
-                            
-                            while arquivo_gemini.state.name == "PROCESSING":
-                                time.sleep(0.5)
+                        
+                        # ETAPA 2: PROCESSAMENTO (AGORA COM LIMITE DE TEMPO)
+                        with st.spinner("2/3 ⏳ Aguardando Google processar o áudio (Isso pode levar alguns segundos)..."):
+                            tentativas = 0
+                            # Tenta por no máximo 1 minuto (30 tentativas de 2 segundos)
+                            while arquivo_gemini.state.name == "PROCESSING" and tentativas < 30:
+                                time.sleep(2)
                                 arquivo_gemini = genai.get_file(arquivo_gemini.name)
+                                tentativas += 1
 
+                            if arquivo_gemini.state.name == "FAILED":
+                                st.error("❌ Erro interno da API: O Google rejeitou ou falhou ao ler este arquivo de áudio.")
+                                st.stop()
+                            elif arquivo_gemini.state.name == "PROCESSING":
+                                st.error("❌ Timeout: O Google demorou mais de 1 minuto para ler o arquivo e a conexão foi encerrada.")
+                                st.stop()
+
+                        # ETAPA 3: TRANSCRIÇÃO E JULGAMENTO
+                        with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras (Pode levar até 1 minuto)..."):
                             prompt_escrivao = """
                             [CONTEXTO DE MODERAÇÃO FORENSE E AUDITORIA DISCIPLINAR DE ESPORTS]
                             Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio do chat de voz do jogo CS2 sem qualquer censura, filtro, alteração ou omissão.
@@ -190,23 +205,17 @@ with col_entrada:
                             )
                             
                             texto_transcrito = ""
-                            try:
-                                if res_transcricao.candidates and res_transcricao.candidates[0].content:
-                                    parts = res_transcricao.candidates[0].content.parts
-                                    texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
-                            except ValueError:
-                                texto_transcrito = ""
+                            if res_transcricao.candidates and res_transcricao.candidates[0].content:
+                                parts = res_transcricao.candidates[0].content.parts
+                                texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
 
+                            # Limpeza dos arquivos temporários
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
-                                st.session_state.ultima_recomendacao = "⚠️ Nenhuma fala audível transcrita ou o áudio contém apenas ruídos de fundo."
-                                st.session_state.arquivo_audio_atual = arquivo_audio
-                                st.session_state.analise_concluida = True
-                                auth.registrar_uso_convidado()
-                                st.rerun()
+                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas os filtros de segurança severos bloquearam a exibição do texto (ou não há voz inteligível)."
                             else:
                                 prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
                                 res_audio = model_zeus.generate_content(
@@ -221,17 +230,18 @@ with col_entrada:
                                     texto_recomendacao = "".join([p.text for p in parts if hasattr(p, 'text')])
 
                                 if not texto_recomendacao:
-                                    texto_recomendacao = "⚠️ A análise da transcrição contém toxicidade tão extrema que o Google impediu a IA de descrever a justificativa de forma segura."
+                                    texto_recomendacao = "⚠️ A análise contém toxicidade tão extrema que a API impediu o Zeus de descrever a punição."
 
                                 st.session_state.ultimo_texto = texto_transcrito
                                 st.session_state.ultima_recomendacao = texto_recomendacao
-                                st.session_state.arquivo_audio_atual = arquivo_audio
-                                st.session_state.analise_concluida = True
-                                auth.registrar_uso_convidado()
-                                st.rerun()
+                            
+                            st.session_state.arquivo_audio_atual = arquivo_audio
+                            st.session_state.analise_concluida = True
+                            auth.registrar_uso_convidado()
+                            st.rerun()
 
-                        except Exception as e:
-                            st.error(f"Erro ao processar áudio: {e}")
+                    except Exception as e:
+                        st.error(f"Erro fatal ao processar áudio: {e}")
 
 # LADO DIREITO: VEREDITO
 with col_saida:

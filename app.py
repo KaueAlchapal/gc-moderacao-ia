@@ -40,6 +40,14 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
+def limpar_arquivos_antigos_gemini():
+    """Varre e deleta arquivos travados na API para evitar lentidão e limite de cota."""
+    try:
+        for f in genai.list_files():
+            genai.delete_file(f.name)
+    except Exception:
+        pass
+
 # ==========================================
 # INICIALIZAÇÃO DE DADOS E IA
 # ==========================================
@@ -58,7 +66,6 @@ filtros_seguranca = {
 # BARRA LATERAL (MENU)
 # ==========================================
 with st.sidebar:
-    # 1. Logo compacta na barra lateral
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
     with col_logo2:
         if os.path.exists("logo.png"):
@@ -66,7 +73,6 @@ with st.sidebar:
             
     st.markdown("<h3 style='text-align: center; margin-top: -15px;' anchor=False>Zeus Control</h3>", unsafe_allow_html=True)
     
-    # 2. Informações compactadas (Sem a caixa verde gigante)
     if st.session_state.is_admin:
         st.markdown(f"<p style='text-align: center; color: #4CAF50; font-size: 14px; margin-top: -10px;'>✅ Corporativo | {len(df_casos)} casos salvos</p>", unsafe_allow_html=True)
     else:
@@ -78,7 +84,6 @@ with st.sidebar:
         resetar_app()
         st.rerun()
 
-    # 3. Treinamento (Exclusivo Admin) otimizado para economizar espaço
     if st.session_state.is_admin and st.session_state.analise_concluida and st.session_state.ultimo_texto:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
@@ -87,13 +92,12 @@ with st.sidebar:
         punicao_real = st.selectbox(
             "Veredito:", 
             ["SEM PUNIÇÃO", "Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN"],
-            label_visibility="collapsed" # Esconde a palavra "Veredito:" para subir a caixinha
+            label_visibility="collapsed"
         )
         
         if st.button("💾 Salvar Feedback", use_container_width=True):
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
-
 
 # ==========================================
 # TELA PRINCIPAL (UI DE ANÁLISE)
@@ -151,7 +155,8 @@ with col_entrada:
 
     with aba_audio:
         with st.container(border=True):
-            with st.form("form_audio", clear_on_submit=False):
+            # MUDANÇA: clear_on_submit=True (Isso limpa o áudio anexado assim que envia, evitando arquivos zumbis no F5)
+            with st.form("form_audio", clear_on_submit=True):
                 arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
                 
                 c3, c4 = st.columns(2)
@@ -171,9 +176,13 @@ with col_entrada:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        # ETAPA 1: UPLOAD SEGURO
-                        with st.spinner("1/3 📤 Preparando arquivo e subindo para o Google..."):
-                            arquivo_audio.seek(0) # VACINA 1: Garante que o arquivo seja lido do segundo zero
+                        # ETAPA 0: FAXINA DE ARQUIVOS PRESOS
+                        with st.spinner("0/3 🧹 Limpando cache de uploads antigos..."):
+                            limpar_arquivos_antigos_gemini()
+
+                        # ETAPA 1: UPLOAD
+                        with st.spinner("1/3 📤 Subindo arquivo seguro para o Google..."):
+                            arquivo_audio.seek(0) 
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
@@ -181,25 +190,24 @@ with col_entrada:
                             tipo_mime = arquivo_audio.type if arquivo_audio.type else "audio/wav"
                             arquivo_gemini = genai.upload_file(temp_path, mime_type=tipo_mime)
                         
-                        # ETAPA 2: PROCESSAMENTO
-                        with st.spinner("2/3 ⏳ Aguardando Google processar o áudio..."):
+                        # ETAPA 2: PROCESSAMENTO RESILIENTE (ESPERA ATÉ 10 MINUTOS EM INTERVALOS)
+                        with st.spinner("2/3 ⏳ Aguardando Google processar (Áudios longos demoram)..."):
                             tentativas = 0
-                            while arquivo_gemini.state.name == "PROCESSING" and tentativas < 30:
-                                time.sleep(2)
+                            # Tenta até 60 vezes pausando 5 segundos = 5 minutos de tolerância na fila
+                            while arquivo_gemini.state.name == "PROCESSING" and tentativas < 60:
+                                time.sleep(5)
                                 arquivo_gemini = genai.get_file(arquivo_gemini.name)
                                 tentativas += 1
 
                             if arquivo_gemini.state.name == "FAILED":
-                                st.error("❌ Erro interno da API: O Google rejeitou este arquivo de áudio.")
+                                st.error("❌ Erro interno da API: O Google rejeitou este arquivo na entrada.")
                                 st.stop()
                             elif arquivo_gemini.state.name == "PROCESSING":
-                                st.error("❌ Timeout: O Google demorou demais para ler a mídia.")
+                                st.error("❌ Timeout: O Google levou mais de 5 minutos na fila de processamento e estourou o tempo.")
                                 st.stop()
 
-                        # ETAPA 3: TRANSCRIÇÃO (COM PROTEÇÃO ANTI-LOOP)
+                        # ETAPA 3: TRANSCRIÇÃO (COM DIAGNÓSTICO EXATO)
                         with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras..."):
-                            
-                            # VACINA 2: Prompt instruindo a ignorar ruídos do jogo
                             prompt_escrivao = """
                             [CONTEXTO DE AUDITORIA FORENSE DE ESPORTS]
                             Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio em texto.
@@ -208,38 +216,45 @@ with col_entrada:
                             Retorne APENAS o texto falado.
                             """
                             
-                            # VACINA 3: Temperatura 0.4 para pular ruídos e limite de tokens como freio de segurança
                             res_transcricao = model_escrivao.generate_content(
                                 [prompt_escrivao, arquivo_gemini], 
-                                generation_config={
-                                    "temperature": 0.4, 
-                                    "max_output_tokens": 1500 
-                                },
-                                safety_settings=filtros_seguranca
+                                generation_config={"temperature": 0.4, "max_output_tokens": 1500},
+                                safety_settings=filtros_seguranca,
+                                request_options={"timeout": 600}
                             )
                             
                             texto_transcrito = ""
-                            if res_transcricao.candidates and res_transcricao.candidates[0].content:
-                                parts = res_transcricao.candidates[0].content.parts
-                                texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
+                            motivo_bloqueio = ""
 
+                            # CAPTURA DE DIAGNÓSTICO
+                            if res_transcricao.prompt_feedback and res_transcricao.prompt_feedback.block_reason:
+                                motivo_bloqueio = f"Google bloqueou todo o comando. Motivo: {res_transcricao.prompt_feedback.block_reason.name}"
+                            elif res_transcricao.candidates:
+                                razao_parada = res_transcricao.candidates[0].finish_reason.name
+                                if razao_parada != "STOP":
+                                    motivo_bloqueio = f"Geração cortada pelo Filtro de Segurança Interno: {razao_parada}"
+                                elif res_transcricao.candidates[0].content:
+                                    parts = res_transcricao.candidates[0].content.parts
+                                    texto_transcrito = "".join([p.text for p in parts if hasattr(p, 'text')])
+
+                            # Limpa arquivos para não encher a cota
                             genai.delete_file(arquivo_gemini.name)
                             os.remove(temp_path)
 
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
-                                st.session_state.ultima_recomendacao = "⚠️ O Google processou o áudio, mas recusou a exibição do texto (ou considerou apenas ruído)."
+                                if motivo_bloqueio:
+                                    st.session_state.ultima_recomendacao = f"⚠️ Falha de Transcrição!\n\n**Detalhe:** {motivo_bloqueio}"
+                                else:
+                                    st.session_state.ultima_recomendacao = "⚠️ O Google não encontrou nenhuma voz audível/inteligível neste arquivo."
                             else:
                                 prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
                                 
-                                # A análise das regras volta para temp 0.0 (modo lógico), mas o limite de tokens continua para proteger a API
                                 res_audio = model_zeus.generate_content(
                                     prompt_audio, 
                                     safety_settings=filtros_seguranca, 
-                                    generation_config={
-                                        "temperature": 0.0,
-                                        "max_output_tokens": 1500
-                                    }
+                                    generation_config={"temperature": 0.0, "max_output_tokens": 1500},
+                                    request_options={"timeout": 600}
                                 )
 
                                 texto_recomendacao = ""
@@ -248,7 +263,7 @@ with col_entrada:
                                     texto_recomendacao = "".join([p.text for p in parts if hasattr(p, 'text')])
 
                                 if not texto_recomendacao:
-                                    texto_recomendacao = "⚠️ A análise contém toxicidade tão extrema que a API impediu o Zeus de descrever a punição final."
+                                    texto_recomendacao = "⚠️ A IA transcreveu o áudio com sucesso, mas a resposta final da regra de negócio foi bloqueada pelos filtros."
 
                                 st.session_state.ultimo_texto = texto_transcrito
                                 st.session_state.ultima_recomendacao = texto_recomendacao

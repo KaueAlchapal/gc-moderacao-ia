@@ -38,37 +38,6 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-def extrair_trechos_toxicos(texto):
-    termos_gatilho = [
-        r"pretinho", r"pretão", r"macaco", r"pobre", r"fudido", r"clt", 
-        r"filho da puta", r"fdp", r"viado", r"boludo", r"imbecil", r"retardado", 
-        r"corno", r"arrombado", r"lixo", r"merda", r"caralho", r"porra", r"kys", r"lazarento"
-    ]
-    
-    frases = re.split(r'(?<=[.!?])\s+', texto)
-    trechos_encontrados = []
-    
-    for frase in frases:
-        for termo in termos_gatilho:
-            if re.search(rf"\b{termo}\b", frase, re.IGNORECASE):
-                frase_limpa = frase.strip()
-                if frase_limpa not in trechos_encontrados:
-                    trechos_encontrados.append(frase_limpa)
-                break
-                
-    if not trechos_encontrados:
-        return ""
-        
-    trechos_destacados = []
-    for trecho in trechos_encontrados:
-        trecho_com_destaque = trecho
-        for termo in termos_gatilho:
-            padrao = re.compile(rf"\b({termo})\b", re.IGNORECASE)
-            trecho_com_destaque = padrao.sub(r'<mark style="background-color: #ff4b4b; color: white; border-radius: 3px; padding: 0 4px; font-weight: bold;">\1</mark>', trecho_com_destaque)
-        trechos_destacados.append(trecho_com_destaque)
-        
-    return " &nbsp;<strong>-</strong>&nbsp; ".join(trechos_destacados)
-
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 
@@ -265,15 +234,26 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
-    if st.session_state.analise_concluida and st.session_state.ultimo_texto.strip():
-        trechos_html = extrair_trechos_toxicos(st.session_state.ultimo_texto)
-        if trechos_html:
-            with st.container(border=True):
-                st.markdown("### 🚨 Toxicidade Extraída")
-                st.markdown(
-                    f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.8; border-left: 4px solid #ff4b4b;'>{trechos_html}</div>", 
-                    unsafe_allow_html=True
-                )
+    # Separação da resposta do Gemini entre Toxicidade e Veredito
+    toxicidade_extraida = ""
+    veredito_final = st.session_state.ultima_recomendacao
+
+    if "---" in st.session_state.ultima_recomendacao:
+        partes = st.session_state.ultima_recomendacao.split("---", 1)
+        linha_tox = partes[0].replace("TOXICIDADE:", "").strip()
+        veredito_final = partes[1].strip()
+        
+        if linha_tox and "NENHUMA" not in linha_tox.upper():
+            toxicidade_extraida = linha_tox
+
+    # Exibe o painel de toxicidade na coluna esquerda apenas se houver infração
+    if st.session_state.analise_concluida and toxicidade_extraida:
+        with st.container(border=True):
+            st.markdown("### 🚨 Toxicidade Extraída")
+            st.markdown(
+                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.8; border-left: 4px solid #ff4b4b; color: #ff4b4b; font-weight: bold;'>{toxicidade_extraida}</div>", 
+                unsafe_allow_html=True
+            )
 
 with col_saida:
     if st.session_state.analise_concluida:
@@ -283,9 +263,9 @@ with col_saida:
                 st.audio(st.session_state.arquivo_audio_atual)
             
             if not st.session_state.ultimo_texto.strip():
-                st.warning(st.session_state.ultima_recomendacao)
+                st.warning(veredito_final)
             else:
-                st.success(st.session_state.ultima_recomendacao)
+                st.success(veredito_final)
                 
                 st.markdown("**Contexto integral do caso:**")
                 st.text_area(

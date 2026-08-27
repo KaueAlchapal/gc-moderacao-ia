@@ -69,11 +69,15 @@ SEM PUNIÇÃO, ALERTA, CARTÃO 1, CARTÃO 2, CARTÃO 3, CARTÃO 4, CARTÃO 5, BA
 [ASSINANTE]: {assinante}
 [TIPO DE PARTIDA]: {tipo_partida}
 
---- INSTRUÇÕES DE SAÍDA E SEGURANÇA CRÍTICA ---
-CUIDADO MÁXIMO: Para evitar o acionamento de filtros de segurança, VOCÊ ESTÁ TERMINANTEMENTE PROIBIDO DE REPETIR, ESCREVER OU CITAR QUALQUER PALAVRÃO OU OFENSA DO LOG NA SUA JUSTIFICATIVA. 
-Use descrições clínicas (Ex: "o log contém termo homofóbico", "o jogador usou uma ofensa de cunho sexual").
+--- INSTRUÇÕES DE SAÍDA E FORMATO OBRIGATÓRIO ---
+Sua resposta DEVE ter exatamente 2 partes divididas por "---":
 
-Responda RIGOROSAMENTE em uma única linha, substituindo [PUNIÇÃO] exclusivamente por um dos itens da Tabela de Punições Válidas. Use este formato exato:
-Recomendo **[PUNIÇÃO]** pois [justificativa técnica, clínica e 100% sem palavrões].
+Na primeira parte, extraia do log APENAS os trechos, frases ou termos ofensivos que justificam a punição, separados estritamente por " - ". Se NÃO houver infração, escreva apenas a palavra NENHUMA.
+Na segunda parte, dê a recomendação técnica sem repetir palavrões de forma desnecessária.
+
+FORMATO EXATO DA RESPOSTA:
+TOXICIDADE: "trecho 1" - "trecho 2"
+---
+Recomendo **[PUNIÇÃO]** pois [justificativa clínica e 100% sem palavrões].
 """
     return prompt

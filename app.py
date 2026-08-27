@@ -55,6 +55,7 @@ df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 model_zeus, model_escrivao, _ = ai_service.obter_modelos_e_filtros()
 
+# Filtros completamente desligados
 filtros_seguranca = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -80,6 +81,7 @@ with st.sidebar:
     
     st.divider()
     
+    # É ESTE BOTÃO QUE VAI LIMPAR A TELA AGORA
     if st.button("🔄 Nova Análise (Limpar Tela)", type="primary", use_container_width=True):
         resetar_app()
         st.rerun()
@@ -155,8 +157,8 @@ with col_entrada:
 
     with aba_audio:
         with st.container(border=True):
-            # MUDANÇA: clear_on_submit=True (Isso limpa o áudio anexado assim que envia, evitando arquivos zumbis no F5)
-            with st.form("form_audio", clear_on_submit=True):
+            # RETORNEI PARA FALSE PARA O ÁUDIO NÃO SUMIR DA TELA
+            with st.form("form_audio", clear_on_submit=False):
                 arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
                 
                 c3, c4 = st.columns(2)
@@ -190,8 +192,8 @@ with col_entrada:
                             tipo_mime = arquivo_audio.type if arquivo_audio.type else "audio/wav"
                             arquivo_gemini = genai.upload_file(temp_path, mime_type=tipo_mime)
                         
-                        # ETAPA 2: PROCESSAMENTO RESILIENTE (ESPERA ATÉ 10 MINUTOS EM INTERVALOS)
-                        with st.spinner("2/3 ⏳ Aguardando Google processar (Áudios longos demoram)..."):
+                        # ETAPA 2: PROCESSAMENTO RESILIENTE
+                        with st.spinner("2/3 ⏳ Aguardando Google processar..."):
                             tentativas = 0
                             # Tenta até 60 vezes pausando 5 segundos = 5 minutos de tolerância na fila
                             while arquivo_gemini.state.name == "PROCESSING" and tentativas < 60:
@@ -206,19 +208,21 @@ with col_entrada:
                                 st.error("❌ Timeout: O Google levou mais de 5 minutos na fila de processamento e estourou o tempo.")
                                 st.stop()
 
-                        # ETAPA 3: TRANSCRIÇÃO (COM DIAGNÓSTICO EXATO)
+                        # ETAPA 3: TRANSCRIÇÃO (COM DIAGNÓSTICO EXATO E TEMPERATURA MAIS ALTA)
                         with st.spinner("3/3 ✍️ Extraindo falas e aplicando regras..."):
+                            
+                            # PROMPT AJUSTADO para não engatilhar o modelo com discursos problemáticos muito repetitivos
                             prompt_escrivao = """
-                            [CONTEXTO DE AUDITORIA FORENSE DE ESPORTS]
-                            Sua tarefa é ESTRITAMENTE TRANSCREVER o áudio em texto.
-                            Mantenha a transcrição 100% fiel e exata ao áudio original, sem omitir ou censurar nenhuma palavra, para fins de auditoria legal.
-                            IGNORE ruídos de fundo, chiados, sons de teclado, tiros e passos do jogo. Foco apenas na voz humana.
-                            Retorne APENAS o texto falado.
+                            Sua tarefa é transcrever o arquivo de áudio. 
+                            Gere uma transcrição descritiva do que está sendo dito pelos participantes, sem alterar o sentido original das palavras. 
+                            Ignore sons não verbais e ruídos de fundo (como sons de jogo, tiros, assobios prolongados e ruídos de estática). 
+                            Retorne apenas o texto correspondente à fala humana transcrita.
                             """
                             
+                            # MUDANÇA CRUCIAL: Aumentei a temperature para 0.8 para evitar que o modelo trave em loops infinitos com a repetição de palavras
                             res_transcricao = model_escrivao.generate_content(
                                 [prompt_escrivao, arquivo_gemini], 
-                                generation_config={"temperature": 0.4, "max_output_tokens": 1500},
+                                generation_config={"temperature": 0.8, "max_output_tokens": 8192},
                                 safety_settings=filtros_seguranca,
                                 request_options={"timeout": 600}
                             )
@@ -226,7 +230,7 @@ with col_entrada:
                             texto_transcrito = ""
                             motivo_bloqueio = ""
 
-                            # CAPTURA DE DIAGNÓSTICO
+                            # CAPTURA DE DIAGNÓSTICO PARA SABERMOS PORQUE ELE PAROU
                             if res_transcricao.prompt_feedback and res_transcricao.prompt_feedback.block_reason:
                                 motivo_bloqueio = f"Google bloqueou todo o comando. Motivo: {res_transcricao.prompt_feedback.block_reason.name}"
                             elif res_transcricao.candidates:
@@ -244,16 +248,17 @@ with col_entrada:
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
                                 if motivo_bloqueio:
-                                    st.session_state.ultima_recomendacao = f"⚠️ Falha de Transcrição!\n\n**Detalhe:** {motivo_bloqueio}"
+                                    st.session_state.ultima_recomendacao = f"⚠️ Falha de Transcrição!\n\n**Detalhe:** {motivo_bloqueio}\n\n*Nota: Áudios com extrema repetição de discursos problemáticos ou distorcidos podem acionar filtros irremovíveis da API.*"
                                 else:
-                                    st.session_state.ultima_recomendacao = "⚠️ O Google não encontrou nenhuma voz audível/inteligível neste arquivo."
+                                    st.session_state.ultima_recomendacao = "⚠️ O Google não encontrou nenhuma voz audível/inteligível neste arquivo após desconsiderar os ruídos."
                             else:
                                 prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
                                 
+                                # Análise final com temperature baixa para focar na lógica, mas com alto limite de tokens
                                 res_audio = model_zeus.generate_content(
                                     prompt_audio, 
                                     safety_settings=filtros_seguranca, 
-                                    generation_config={"temperature": 0.0, "max_output_tokens": 1500},
+                                    generation_config={"temperature": 0.0, "max_output_tokens": 8192},
                                     request_options={"timeout": 600}
                                 )
 

@@ -4,6 +4,7 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import tempfile
 import time
+import re
 from groq import Groq
 from pydub import AudioSegment
 
@@ -11,9 +12,6 @@ import auth
 import data_manager
 import ai_service
 
-# ==========================================
-# CONFIGURAÇÃO DA PÁGINA E CSS
-# ==========================================
 st.set_page_config(page_title="Zeus AI - Moderação", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -24,9 +22,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# AUTENTICAÇÃO E MEMÓRIA
-# ==========================================
 auth.inicializar_autenticacao()
 auth.verificar_acesso()
 
@@ -42,23 +37,31 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-# ==========================================
-# INICIALIZAÇÃO DE DADOS E IA
-# ==========================================
+def destacar_toxicidade(texto):
+    termos_toxicos = [
+        r"lixo", r"merda", r"filho da puta", r"fdp", r"macaco", r"preto", 
+        r"viado", r"boludo", r"imbecil", r"retardado", r"corno", r"arrombado", 
+        r"crl", r"caralho", r"porra", r"vsf", r"kys"
+    ]
+    
+    texto_destacado = texto
+    for palavra in termos_toxicos:
+        padrao = re.compile(rf"\b({palavra})\b", re.IGNORECASE)
+        texto_destacado = padrao.sub(r'<span style="color: #ff4b4b; font-weight: bold;">\1</span>', texto_destacado)
+    
+    return texto_destacado
+
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 
-# Carrega o Zeus 
 model_zeus, _, _ = ai_service.obter_modelos_e_filtros()
 
-# Tenta puxar a chave dos Secrets do Streamlit
 chave_groq = st.secrets.get("GROQ_API_KEY")
 
 if not chave_groq:
     st.error("⚠️ Chave da Groq não encontrada nos Secrets! Configure o cofre antes de continuar.")
     st.stop()
 
-# Cliente Groq inicializado com a chave segura
 groq_client = Groq(api_key=chave_groq)
 
 filtros_seguranca = {
@@ -68,9 +71,6 @@ filtros_seguranca = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-# ==========================================
-# BARRA LATERAL (MENU)
-# ==========================================
 with st.sidebar:
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
     with col_logo2:
@@ -105,15 +105,12 @@ with st.sidebar:
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
 
-# ==========================================
-# TELA PRINCIPAL (UI DE ANÁLISE)
-# ==========================================
-st.title("Zeus - IA Moderadora ⚡", anchor=False)
-st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
-
 col_entrada, col_saida = st.columns([1.1, 1], gap="large")
 
 with col_entrada:
+    st.title("Zeus - IA Moderadora ⚡", anchor=False)
+    st.markdown("Ferramenta de análise avançada de toxicidade e infrações.")
+
     aba_texto, aba_audio = st.tabs(["📝 Analisar Chat/Log", "🎧 Transcrever Áudio"])
 
     with aba_texto:
@@ -181,16 +178,13 @@ with col_entrada:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        # ETAPA 1: TRANSCRIÇÃO FRACIONADA COM GROQ
                         with st.spinner("1/2 ⚡ Fatiando e transcrevendo áudio em alta velocidade..."):
                             arquivo_audio.seek(0)
                             
-                            # Salva o arquivo principal temporariamente
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
-                            # Carrega o áudio e fatia a cada 2 minutos (120.000 ms)
                             audio_segment = AudioSegment.from_file(temp_path)
                             chunk_length_ms = 120000 
                             chunks = [audio_segment[i:i + chunk_length_ms] for i in range(0, len(audio_segment), chunk_length_ms)]
@@ -202,7 +196,6 @@ with col_entrada:
                                     chunk.export(chunk_file.name, format="wav")
                                     chunk_path = chunk_file.name
 
-                                # Sistema Anti-Queda para cada pedaço
                                 for tentativa in range(3):
                                     try:
                                         with open(chunk_path, "rb") as file:
@@ -222,11 +215,9 @@ with col_entrada:
                                         
                                 os.remove(chunk_path)
 
-                            # Junta todos os pedaços transcritos em um texto só
                             texto_transcrito = " ".join(transcricoes_parciais)
                             os.remove(temp_path)
 
-                        # ETAPA 2: ANÁLISE DE REGRAS COM GEMINI (ZEUS)
                         with st.spinner("2/2 🧠 Aplicando regras corporativas..."):
                             if not texto_transcrito.strip():
                                 st.session_state.ultimo_texto = ""
@@ -256,9 +247,6 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
-# ==========================================
-# LADO DIREITO: VEREDITO
-# ==========================================
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):
@@ -269,7 +257,11 @@ with col_saida:
             if not st.session_state.ultimo_texto.strip():
                 st.warning(st.session_state.ultima_recomendacao)
             else:
-                st.info(f"**Contexto capturado:**\n\n{st.session_state.ultimo_texto}")
+                texto_focado = destacar_toxicidade(st.session_state.ultimo_texto)
+                
+                st.markdown("**Contexto capturado:**")
+                st.markdown(f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.5; margin-bottom: 15px;'>{texto_focado}</div>", unsafe_allow_html=True)
+                
                 st.success(st.session_state.ultima_recomendacao)
     else:
         with st.container(border=True):

@@ -3,3 +3,4 @@ pandas
 google-generativeai
 starlette<1.4.0
 groq
+pydub

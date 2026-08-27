@@ -5,6 +5,7 @@ import os
 import tempfile
 import time
 from groq import Groq
+from pydub import AudioSegment
 
 import auth
 import data_manager
@@ -47,11 +48,18 @@ def resetar_app():
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
 
-# Carrega o Zeus (ignoramos o Escrivão antigo do Gemini usando _)
+# Carrega o Zeus 
 model_zeus, _, _ = ai_service.obter_modelos_e_filtros()
 
-# Cliente Groq inicializado com a sua chave gratuita
-groq_client = Groq(api_key="GROQ_API_KEY")
+# Tenta puxar a chave dos Secrets do Streamlit
+chave_groq = st.secrets.get("GROQ_API_KEY")
+
+if not chave_groq:
+    st.error("⚠️ Chave da Groq não encontrada nos Secrets! Configure o cofre antes de continuar.")
+    st.stop()
+
+# Cliente Groq inicializado com a chave segura
+groq_client = Groq(api_key=chave_groq)
 
 filtros_seguranca = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -173,23 +181,49 @@ with col_entrada:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        # ETAPA 1: TRANSCRIÇÃO ULTRA RÁPIDA COM GROQ (WHISPER)
-                        with st.spinner("1/2 ⚡ Transcrevendo áudio em alta velocidade com Groq..."):
+                        # ETAPA 1: TRANSCRIÇÃO FRACIONADA COM GROQ
+                        with st.spinner("1/2 ⚡ Fatiando e transcrevendo áudio em alta velocidade..."):
                             arquivo_audio.seek(0)
+                            
+                            # Salva o arquivo principal temporariamente
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                                 temp_file.write(arquivo_audio.read())
                                 temp_path = temp_file.name
 
-                            # Acionando a Groq diretamente no arquivo temporário
-                            with open(temp_path, "rb") as file:
-                                transcricao = groq_client.audio.transcriptions.create(
-                                  file=(temp_path, file.read()),
-                                  model="whisper-large-v3",
-                                  prompt="CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban.",
-                                  temperature=0.0
-                                )
+                            # Carrega o áudio e fatia a cada 2 minutos (120.000 ms)
+                            audio_segment = AudioSegment.from_file(temp_path)
+                            chunk_length_ms = 120000 
+                            chunks = [audio_segment[i:i + chunk_length_ms] for i in range(0, len(audio_segment), chunk_length_ms)]
                             
-                            texto_transcrito = transcricao.text
+                            transcricoes_parciais = []
+
+                            for index, chunk in enumerate(chunks):
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as chunk_file:
+                                    chunk.export(chunk_file.name, format="wav")
+                                    chunk_path = chunk_file.name
+
+                                # Sistema Anti-Queda para cada pedaço
+                                for tentativa in range(3):
+                                    try:
+                                        with open(chunk_path, "rb") as file:
+                                            transcricao = groq_client.audio.transcriptions.create(
+                                                file=("audio.wav", file.read()),
+                                                model="whisper-large-v3",
+                                                prompt="CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban.",
+                                                temperature=0.0
+                                            )
+                                        transcricoes_parciais.append(transcricao.text)
+                                        break
+                                    except Exception as e:
+                                        if tentativa == 2:
+                                            os.remove(chunk_path)
+                                            raise e
+                                        time.sleep(2)
+                                        
+                                os.remove(chunk_path)
+
+                            # Junta todos os pedaços transcritos em um texto só
+                            texto_transcrito = " ".join(transcricoes_parciais)
                             os.remove(temp_path)
 
                         # ETAPA 2: ANÁLISE DE REGRAS COM GEMINI (ZEUS)

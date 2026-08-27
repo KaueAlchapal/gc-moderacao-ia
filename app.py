@@ -19,6 +19,7 @@ st.markdown("""
     div.stButton > button[kind="primary"] { background-color: #00AEEF !important; color: white !important; border: none !important; font-weight: bold !important; }
     div.stButton > button[kind="primary"]:hover { background-color: #008CBA !important; }
     div[data-testid="stForm"] { border-color: #333333; }
+    div[data-testid="stTextArea"] textarea { font-size: 15px !important; line-height: 1.5 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -41,7 +42,7 @@ def extrair_trechos_toxicos(texto):
     termos_gatilho = [
         r"pretinho", r"pretão", r"macaco", r"pobre", r"fudido", r"clt", 
         r"filho da puta", r"fdp", r"viado", r"boludo", r"imbecil", r"retardado", 
-        r"corno", r"arrombado", r"lixo", r"merda", r"caralho", r"porra", r"kys"
+        r"corno", r"arrombado", r"lixo", r"merda", r"caralho", r"porra", r"kys", r"lazarento"
     ]
     
     frases = re.split(r'(?<=[.!?])\s+', texto)
@@ -56,18 +57,17 @@ def extrair_trechos_toxicos(texto):
                 break
                 
     if not trechos_encontrados:
-        return "<span style='color: #888;'>Nenhum termo tóxico direto foi isolado.</span>"
+        return ""
         
-    resultado_html = ""
+    trechos_destacados = []
     for trecho in trechos_encontrados:
         trecho_com_destaque = trecho
         for termo in termos_gatilho:
             padrao = re.compile(rf"\b({termo})\b", re.IGNORECASE)
             trecho_com_destaque = padrao.sub(r'<mark style="background-color: #ff4b4b; color: white; border-radius: 3px; padding: 0 4px; font-weight: bold;">\1</mark>', trecho_com_destaque)
-            
-        resultado_html += f"<div style='margin-bottom: 8px;'>• {trecho_com_destaque}</div>"
+        trechos_destacados.append(trecho_com_destaque)
         
-    return resultado_html
+    return " &nbsp;<strong>-</strong>&nbsp; ".join(trechos_destacados)
 
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
@@ -265,15 +265,15 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
-    # Exibe apenas os trechos recortados que motivaram a punição
     if st.session_state.analise_concluida and st.session_state.ultimo_texto.strip():
-        with st.container(border=True):
-            st.markdown("### 🚨 Toxicidade Extraída")
-            trechos_html = extrair_trechos_toxicos(st.session_state.ultimo_texto)
-            st.markdown(
-                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 4px solid #ff4b4b;'>{trechos_html}</div>", 
-                unsafe_allow_html=True
-            )
+        trechos_html = extrair_trechos_toxicos(st.session_state.ultimo_texto)
+        if trechos_html:
+            with st.container(border=True):
+                st.markdown("### 🚨 Toxicidade Extraída")
+                st.markdown(
+                    f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.8; border-left: 4px solid #ff4b4b;'>{trechos_html}</div>", 
+                    unsafe_allow_html=True
+                )
 
 with col_saida:
     if st.session_state.analise_concluida:
@@ -291,7 +291,7 @@ with col_saida:
                 st.text_area(
                     label="Transcrição", 
                     value=st.session_state.ultimo_texto, 
-                    height=250, 
+                    height=450, 
                     disabled=True, 
                     label_visibility="collapsed"
                 )

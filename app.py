@@ -37,19 +37,37 @@ def resetar_app():
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
 
-def destacar_toxicidade(texto):
-    termos_toxicos = [
-        r"lixo", r"merda", r"filho da puta", r"fdp", r"macaco", r"preto", 
-        r"viado", r"boludo", r"imbecil", r"retardado", r"corno", r"arrombado", 
-        r"crl", r"caralho", r"porra", r"vsf", r"kys", r"pobre", r"fudido", r"clt"
+def extrair_trechos_toxicos(texto):
+    termos_gatilho = [
+        r"pretinho", r"pretão", r"macaco", r"pobre", r"fudido", r"clt", 
+        r"filho da puta", r"fdp", r"viado", r"boludo", r"imbecil", r"retardado", 
+        r"corno", r"arrombado", r"lixo", r"merda", r"caralho", r"porra", r"kys"
     ]
     
-    texto_destacado = texto
-    for palavra in termos_toxicos:
-        padrao = re.compile(rf"\b({palavra})\b", re.IGNORECASE)
-        texto_destacado = padrao.sub(r'<span style="color: #ff4b4b; font-weight: bold;">\1</span>', texto_destacado)
+    frases = re.split(r'(?<=[.!?])\s+', texto)
+    trechos_encontrados = []
     
-    return texto_destacado
+    for frase in frases:
+        for termo in termos_gatilho:
+            if re.search(rf"\b{termo}\b", frase, re.IGNORECASE):
+                frase_limpa = frase.strip()
+                if frase_limpa not in trechos_encontrados:
+                    trechos_encontrados.append(frase_limpa)
+                break
+                
+    if not trechos_encontrados:
+        return "<span style='color: #888;'>Nenhum termo tóxico direto foi isolado.</span>"
+        
+    resultado_html = ""
+    for trecho in trechos_encontrados:
+        trecho_com_destaque = trecho
+        for termo in termos_gatilho:
+            padrao = re.compile(rf"\b({termo})\b", re.IGNORECASE)
+            trecho_com_destaque = padrao.sub(r'<mark style="background-color: #ff4b4b; color: white; border-radius: 3px; padding: 0 4px; font-weight: bold;">\1</mark>', trecho_com_destaque)
+            
+        resultado_html += f"<div style='margin-bottom: 8px;'>• {trecho_com_destaque}</div>"
+        
+    return resultado_html
 
 df_casos = data_manager.carregar_csv()
 ai_service.configurar_api()
@@ -247,13 +265,13 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
-    # Painel de Toxicidade Extraída (Abaixo do upload)
+    # Exibe apenas os trechos recortados que motivaram a punição
     if st.session_state.analise_concluida and st.session_state.ultimo_texto.strip():
         with st.container(border=True):
             st.markdown("### 🚨 Toxicidade Extraída")
-            texto_destacado = destacar_toxicidade(st.session_state.ultimo_texto)
+            trechos_html = extrair_trechos_toxicos(st.session_state.ultimo_texto)
             st.markdown(
-                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.5; border-left: 4px solid #ff4b4b;'>{texto_destacado}</div>", 
+                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.6; border-left: 4px solid #ff4b4b;'>{trechos_html}</div>", 
                 unsafe_allow_html=True
             )
 

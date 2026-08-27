@@ -41,7 +41,7 @@ def destacar_toxicidade(texto):
     termos_toxicos = [
         r"lixo", r"merda", r"filho da puta", r"fdp", r"macaco", r"preto", 
         r"viado", r"boludo", r"imbecil", r"retardado", r"corno", r"arrombado", 
-        r"crl", r"caralho", r"porra", r"vsf", r"kys"
+        r"crl", r"caralho", r"porra", r"vsf", r"kys", r"pobre", r"fudido", r"clt"
     ]
     
     texto_destacado = texto
@@ -247,6 +247,16 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
+    # Painel de Toxicidade Extraída (Abaixo do upload)
+    if st.session_state.analise_concluida and st.session_state.ultimo_texto.strip():
+        with st.container(border=True):
+            st.markdown("### 🚨 Toxicidade Extraída")
+            texto_destacado = destacar_toxicidade(st.session_state.ultimo_texto)
+            st.markdown(
+                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.5; border-left: 4px solid #ff4b4b;'>{texto_destacado}</div>", 
+                unsafe_allow_html=True
+            )
+
 with col_saida:
     if st.session_state.analise_concluida:
         with st.container(border=True):
@@ -257,12 +267,16 @@ with col_saida:
             if not st.session_state.ultimo_texto.strip():
                 st.warning(st.session_state.ultima_recomendacao)
             else:
-                texto_focado = destacar_toxicidade(st.session_state.ultimo_texto)
-                
-                st.markdown("**Contexto capturado:**")
-                st.markdown(f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.5; margin-bottom: 15px;'>{texto_focado}</div>", unsafe_allow_html=True)
-                
                 st.success(st.session_state.ultima_recomendacao)
+                
+                st.markdown("**Contexto integral do caso:**")
+                st.text_area(
+                    label="Transcrição", 
+                    value=st.session_state.ultimo_texto, 
+                    height=250, 
+                    disabled=True, 
+                    label_visibility="collapsed"
+                )
     else:
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")

@@ -52,7 +52,7 @@ SEM PUNIÇÃO, ALERTA, CARTÃO 1, CARTÃO 2, CARTÃO 3, CARTÃO 4, CARTÃO 5, BA
 1. TOXICIDADE COMUM E ESTEREÓTIPOS INDIRETOS: Palavrões genéricos ou estereótipos indiretos: ALERTA. Repetição: CARTÃO 1.
 2. HOMOFOBIA E RAGE SEXUAL: Termos homofóbicos ou rage sexual ("estuprado"): CARTÃO 2. Extrema agressividade repetida: CARTÃO 3.
 3. XENOFOBIA E PRECONCEITO SOCIAL: Um termo isolado: CARTÃO 3. Dois termos/combo: CARTÃO 4. Repetição massiva (4x+): CARTÃO 5.
-4. RACISMO E ATRIBUTOS FÍSICOS: Ofensa a cor branca/físico: CARTÃO 1. Menção isolada a macaco: CARTÃO 5. Macaco + xingamento ou Ódio a cor negra: BAN. Capacitismo: CARTÃO 2.
+4. RACISMO E ATRIBUTOS FÍSICOS: Ofensa a cor branca/físico: CARTÃO 1. Menção isolada a macaco ou Macaco + xingamento sem repetições: CARTÃO 5. Macaco + xingamentos repetitivos, macaco várias vezes ou Ódio a cor negra: BAN. Capacitismo: CARTÃO 2.
 5. REGRA DE AMBIGUIDADE ("ESCURO"):
      Se usado fora do contexto geográfico: BAN.
      Caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno e o uso for estritamente geográfico: SEM PUNIÇÃO.

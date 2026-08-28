@@ -278,4 +278,4 @@ with col_saida:
     else:
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")
-            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecer aqui.")
+            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecer aqui!")

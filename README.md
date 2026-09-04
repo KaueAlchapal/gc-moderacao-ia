@@ -1,7 +1,7 @@
 # Zeus AI | Moderação e Auditoria Forense para CX
 Acelerando decisões e protegendo a nossa comunidade.
 
-Apresento o Zeus, um Assistente de Inteligência Artificial desenhado especificamente para apoiar o time de CX (Community Experience) na moderação de eSports.
+Apresento o Zeus, um Assistente de Inteligência Artificial desenhado especificamente para apoiar o time de CX (Community Experience) na moderação da plataforma.
 
 O objetivo do Zeus não é substituir o julgamento humano — a palavra final e o contexto sempre pertencerão ao analista. Ele atua como um "copiloto" de altíssima velocidade: transcreve áudios complexos em segundos, analisa logs de denúncias, cruza os dados com o nosso livro de regras interno e sugere a punição mais justa e padronizada. O resultado? Fim do gargalo de moderação, consistência nas aplicações de regras e uma comunidade mais segura.
 

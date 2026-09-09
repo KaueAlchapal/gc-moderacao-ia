@@ -15,6 +15,7 @@ A infraestrutura do Zeus foi projetada com foco absoluto em baixa latência, res
 - Bypass de Limite de Arquivos (Fatiador Automático): APIs de áudio possuem limites rígidos (25 MB). Para lidar com denúncias longas (áudios de 10 min+ em .wav que chegam a 80MB), o Zeus utiliza a biblioteca pydub e o motor FFmpeg para realizar o "chunking". Ele corta o arquivo automaticamente em pedaços de 2 minutos, processa todos simultaneamente e costura a transcrição no final de forma imperceptível para o usuário.
 
 - Sistema Anti-Queda (Resiliência): Integrado a um loop de repetição dinâmico, o sistema detecta gargalos de rede ou erros de Bad Gateway (502) no Cloudflare da Groq e realiza retentativas automáticas sem quebrar a aplicação para o analista.
+  
 
 - Segurança e Isolamento (Streamlit Secrets): Nenhuma chave de API é exposta no código (app.py). Utilizamos cofres encriptados de variáveis de ambiente para invocar a Groq e o Gemini. O aplicativo também possui roteamento dinâmico, separando o acesso administrativo do Modo Convidado (com trava de limite de usos).
 

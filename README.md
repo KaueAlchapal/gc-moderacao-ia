@@ -8,7 +8,7 @@ O objetivo do Zeus **não é substituir o julgamento humano** — a palavra fina
 
 ---
 
-## ⚙️ Arquitetura e Engenharia (Under the Hood)
+## Arquitetura e Engenharia (Under the Hood)
 
 A infraestrutura do Zeus foi projetada com foco absoluto em **baixa latência** e **consistência de respostas**, garantindo que a operação escale sem lentidão.
 

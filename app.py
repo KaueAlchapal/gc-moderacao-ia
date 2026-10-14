@@ -11,9 +11,7 @@ from pydub import AudioSegment
 import auth
 import data_manager
 import ai_service
-import static_ffmpeg
 
-static_ffmpeg.add_paths()
 st.set_page_config(page_title="Zeus AI - Moderação", page_icon="⚡", layout="wide")
 
 st.markdown("""

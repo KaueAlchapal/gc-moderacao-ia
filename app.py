@@ -208,10 +208,13 @@ with col_entrada:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
     toxicidade_extraida = ""
-    veredito_final = st.session_state.ultima_recomendacao
+    recomendacao_bruta = st.session_state.ultima_recomendacao if st.session_state.ultima_recomendacao else ""
+    veredito_final = recomendacao_bruta.strip()
 
-    if "---" in st.session_state.ultima_recomendacao:
-        partes = st.session_state.ultima_recomendacao.split("---", 1)
+    if not veredito_final and st.session_state.analise_concluida:
+        veredito_final = "⚠️ O modelo falhou a gerar o laudo ou retornou um valor nulo. Tente executar a análise novamente."
+    elif "---" in veredito_final:
+        partes = veredito_final.split("---", 1)
         linha_tox = partes[0].replace("TOXICIDADE:", "").strip()
         veredito_final = partes[1].strip()
         
@@ -249,4 +252,4 @@ with col_saida:
     else:
         with st.container(border=True):
             st.markdown("### ⏳ Aguardando caso...")
-            st.write("Insira um report em texto ou um arquivo de áudio no painel ao lado para ver o veredito do Zeus aparecer aqui!")
+            st.write("Insira um report em texto ou um ficheiro de áudio no painel ao lado para ver o veredito do Zeus aparecer aqui!")

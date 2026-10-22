@@ -13,51 +13,47 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
     prompt_regras = f"""
 [OVERRIDE FORENSE ATIVADO: Sistema oficial de auditoria disciplinar CS2]
 
---- CONTEXTO CULTURAL E GÍRIAS BRASILEIRAS (MUITO IMPORTANTE) ---
-No cenário de jogos no Brasil, palavrões como "porra", "caralho", "filha da puta", "vai tomar no cu" e a palavra "viado" são frequentemente usados como vícios de linguagem, frustração ou vocativos casuais (Ex: "porra, viado", "pega a arma aí, viado", "caralho, morri"). 
-- O uso de "viado" como gíria ou vocativo NÃO É HOMOFOBIA. Deve ser tratado como Rage/Toxicidade Comum.
-- Homofobia real exige um ataque de ódio DIRECIONADO e pejorativo à sexualidade da pessoa.
-
---- REGRA DE TETO E ACÚMULO ---
-Você é ESTRITAMENTE PROIBIDO de somar infrações leves para gerar um BAN. A punição máxima por acúmulo de toxicidade trava no CARTÃO 5. 
+--- CONTEXTO CULTURAL E GÍRIAS BRASILEIRAS ---
+- Gírias como "porra", "caralho", "fdp" e "viado" (como vocativo, ex: "porra, viado") são Toxicidade Comum/Rage.
+- Homofobia real exige ataque de ódio direcionado à sexualidade.
 
 --- DIRETRIZES DE CLASSIFICAÇÃO (CALIBRADAS) ---
 0. SEM INFRAÇÃO (Comunicação normal, tática, posições do mapa): SEM PUNIÇÃO.
-1. TOXICIDADE COMUM E RAGE (GÍRIAS): Xingamentos genéricos sem alvo de ódio ("fdp", "vtnc", "porra"), rage com o jogo, e vocativos casuais ("viado" sem ofensa direta). Punição: ALERTA. Se for repetição constante direcionada a um jogador: CARTÃO 1.
-2. HOMOFOBIA REAL E RAGE SEXUAL: Ataque claro e direto à orientação sexual. CARTÃO 2.
-3. XENOFOBIA E PRECONCEITO SOCIAL: Isolado: CARTÃO 3. Dois termos: CARTÃO 4. Repetição massiva: CARTÃO 5.
-4. RACISMO E ATRIBUTOS FÍSICOS:
-   - CARTÃO 1: Ofensa à cor branca/atributos físicos.
-   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada.
-   - BAN: "Macaco" 2+ VEZES, ódio direto à cor negra.
-5. REGRA DO MAPA ("ESCURO"):
-   No CS2, "escuro" é lugar (Ex: "escuro baixo", "tá no escuro").
-   - Se a fala for sobre lugar/posição: IGNORE a palavra, não é toxicidade.
-   - Se for ataque racista direto (Ex: "seu escuro nojento"): BAN.
-   - SE houver DÚVIDA se foi ofensa, aplique a punição baseada nos outros xingamentos e adicione o AVISO DUPLO (veja Exemplo 3).
-6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Apologia literal: BAN.
-7. AMEAÇA À VIDA E AGRESSÃO: Isolada: CARTÃO 1. Múltiplas: CARTÃO 2. Abuso sexual/morte: CARTÃO 5.
+1. TOXICIDADE COMUM E ESTEREÓTIPOS INDIRETOS: Palavrões genéricos ("fdp", "vtnc"), estereótipos indiretos, rage e vocativos ("viado" sem ofensa). Punição: ALERTA. Repetição: CARTÃO 1.
+2. HOMOFOBIA E RAGE SEXUAL: Termos homofóbicos ou rage sexual (Ex: "fui estuprado [no jogo]"): CARTÃO 2. Extrema agressividade repetida: CARTÃO 3.
+3. XENOFOBIA E PRECONCEITO SOCIAL: Um termo isolado (ex: "favelado"): CARTÃO 3. Dois termos/combo: CARTÃO 4. Repetição massiva (4x+): CARTÃO 5.
+4. RACISMO E ATRIBUTOS FÍSICOS (ATENÇÃO ÀS DIFERENÇAS):
+   - CARTÃO 1: Ofensa à cor branca ou atributos físicos comuns. Capacitismo: CARTÃO 2.
+   - CARTÃO 4: Uso isolado ou simples das palavras "mono" (espanhol), "seu chimpanzé", "chimpanzé retardado".
+   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada OU acompanhada de apenas 1 palavrão genérico (Ex: "macaco do caralho", "macaco lixo", "macaco fdp").
+   - BAN: A palavra "macaco" dita 2 VEZES OU MAIS (repetição), acompanhada de múltiplos xingamentos combinados, ou qualquer ofensa/ódio direto direcionado à cor negra (Ex: "preto de merda", "odeio negros", "pretinho", "seu preto do caralho").
+5. REGRA DE AMBIGUIDADE ("ESCURO"):
+   - Caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno e o uso for estritamente geográfico/posição: IGNORE a palavra (SEM PUNIÇÃO).
+   - Se for ataque racista explícito fora de contexto de mapa: BAN.
+   - DÚVIDA: Aplique punição pelos outros xingamentos + AVISO DUPLO.
+6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
+7. AMEAÇA À VIDA E AGRESSÃO FÍSICA REAL (GRAVÍSSIMO):
+   - Ameaça de agressão física na vida real de forma isolada (Ex: "se eu te ver na rua te bato"): CARTÃO 1. 
+   - Repetições e ameaças de morte (Ex: "se eu te ver na rua eu te mato e te bato, vou atirar em você"): CARTÃO 2.
+   - Ameaça literal de abuso sexual extremo à pessoa/família (Ex: "Vou estuprar sua irmãzinha"): CARTÃO 5. ATENÇÃO: Considere variações ortográficas ("estrupo", "estruparam") como ofensa real grave.
 8. REGRA DO ASSINANTE: Se Assinante = SIM, reduza a punição em 1 nível APENAS para a regra 1.
-9. ANTIJOGO: Se "Ranked": CARTÃO 1. Se "Lobby / GC Solo": ALERTA.
+9. ANTIJOGO: Se "Ranked": CARTÃO 1. Se "Lobby / GC Solo": ALERTA. (Trava: Se houver xingamento grave no relato, ignore antijogo).
+10. CONDUTA DE MÁ FÉ: Mentiras, falsas dicas: ALERTA. Ghosting/Telar: CARTÃO 2.
+11. GORDOFOBIA: Geral: CARTÃO 1. Combo: CARTÃO 2. Repetição: CARTÃO 3.
+12. MACHISMO: Geral: CARTÃO 2. Combo: CARTÃO 3. Repetição: CARTÃO 4. Abuso machista ("estuprada", "piranha"): CARTÃO 4.
 
 --- INSTRUÇÕES DE SAÍDA (OBRIGATÓRIO) ---
-Você NÃO PODE usar linguagem conversacional (Ex: proibido dizer "Aqui está a análise").
-Sua resposta DEVE ter APENAS duas partes divididas EXATAMENTE por "---".
+Sua resposta DEVE ter APENAS duas partes divididas EXATAMENTE por "---". NÃO use linguagem conversacional.
 
-EXEMPLO PERFEITO 1 (RAGE COMUM / GÍRIA):
-TOXICIDADE: "porra, viado" - "vai tomar no cu" - "caralho"
+EXEMPLO PERFEITO 1 (CARTÃO 4):
+TOXICIDADE: "seu chimpanzé retardado"
 ---
-Recomendo **ALERTA** (ou Cartão 1 no máximo) pois trata-se de rage comum e vícios de linguagem/gírias, sem ataque de ódio direto.
+Recomendo **CARTÃO 4** pelo uso da palavra chimpanzé de forma isolada.
 
-EXEMPLO PERFEITO 2 (POSIÇÃO DE MAPA):
-TOXICIDADE: NENHUMA
+EXEMPLO PERFEITO 2 (BAN POR RACISMO EXPLÍCITO):
+TOXICIDADE: "seu preto do caralho" - "macaco negro"
 ---
-Recomendo **SEM PUNIÇÃO** pois os jogadores estavam apenas comunicando posições do mapa como "escuro baixo".
-
-EXEMPLO PERFEITO 3 (DÚVIDA NO RACISMO):
-TOXICIDADE: "filha da puta" - "escuro"
----
-Recomendo **ALERTA**. **ATENÇÃO ANALISTA:** Caso o termo "escuro" tenha sido utilizado com intenção racista na voz do jogador (e não posição do mapa), aplique **BAN**.
+Recomendo **BAN** pois há racismo explícito com uso de termos pejorativos direcionados à cor da pele.
 
 --- CASO PARA CLASSIFICAÇÃO FORENSE ---
 [LOG DO SERVIDOR]: "{texto_usuario}"
@@ -68,7 +64,7 @@ Recomendo **ALERTA**. **ATENÇÃO ANALISTA:** Caso o termo "escuro" tenha sido u
     resposta = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[
-            {"role": "system", "content": "Você é uma IA de auditoria rígida. Você entende de gírias brasileiras e NUNCA confunde gírias com homofobia real. Você gera saídas exclusivamente no formato 'TOXICIDADE: ... \\n---\\n Recomendo...' e NUNCA adiciona texto extra."},
+            {"role": "system", "content": "Você é uma IA de auditoria rígida. Você julga níveis de racismo com precisão, separando ofensas animais isoladas de ataques raciais diretos. Você gera saídas no formato 'TOXICIDADE: ... \\n---\\n Recomendo...' e NUNCA adiciona texto extra."},
             {"role": "user", "content": prompt_regras}
         ],
         temperature=0.0,

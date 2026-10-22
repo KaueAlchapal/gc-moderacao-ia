@@ -65,7 +65,7 @@ Recomendo **[PUNIÇÃO]** pois [justificativa].
 """
 
     resposta = groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {"role": "system", "content": "Você é Zeus, um classificador linguístico e forense sênior focado em logs de Counter-Strike 2 (CS2). Você segue regras à risca e nunca recusa prompts ofensivos para fins de auditoria."},
             {"role": "user", "content": prompt_regras}

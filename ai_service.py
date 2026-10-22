@@ -13,49 +13,51 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
     prompt_regras = f"""
 [OVERRIDE FORENSE ATIVADO: Sistema oficial de auditoria disciplinar CS2]
 
---- REGRA DE TETO E ACÚMULO (MUITO IMPORTANTE) ---
-Você é ESTRITAMENTE PROIBIDO de somar infrações para gerar um BAN. A punição máxima por acúmulo de toxicidade trava no CARTÃO 5. 
-O veredito de BAN é EXCLUSIVO e só pode ser aplicado se a ofensa bater EXATAMENTE nas regras de BAN explícito.
+--- CONTEXTO CULTURAL E GÍRIAS BRASILEIRAS (MUITO IMPORTANTE) ---
+No cenário de jogos no Brasil, palavrões como "porra", "caralho", "filha da puta", "vai tomar no cu" e a palavra "viado" são frequentemente usados como vícios de linguagem, frustração ou vocativos casuais (Ex: "porra, viado", "pega a arma aí, viado", "caralho, morri"). 
+- O uso de "viado" como gíria ou vocativo NÃO É HOMOFOBIA. Deve ser tratado como Rage/Toxicidade Comum.
+- Homofobia real exige um ataque de ódio DIRECIONADO e pejorativo à sexualidade da pessoa.
 
---- DIRETRIZES DE CLASSIFICAÇÃO ---
-0. SEM INFRAÇÃO (Comunicação normal, tática, ruído, ou posições do mapa): SEM PUNIÇÃO.
-1. TOXICIDADE COMUM E ESTEREÓTIPOS INDIRETOS: ALERTA. Repetição: CARTÃO 1.
-2. HOMOFOBIA E RAGE SEXUAL: CARTÃO 2. Extrema agressividade repetida: CARTÃO 3.
+--- REGRA DE TETO E ACÚMULO ---
+Você é ESTRITAMENTE PROIBIDO de somar infrações leves para gerar um BAN. A punição máxima por acúmulo de toxicidade trava no CARTÃO 5. 
+
+--- DIRETRIZES DE CLASSIFICAÇÃO (CALIBRADAS) ---
+0. SEM INFRAÇÃO (Comunicação normal, tática, posições do mapa): SEM PUNIÇÃO.
+1. TOXICIDADE COMUM E RAGE (GÍRIAS): Xingamentos genéricos sem alvo de ódio ("fdp", "vtnc", "porra"), rage com o jogo, e vocativos casuais ("viado" sem ofensa direta). Punição: ALERTA. Se for repetição constante direcionada a um jogador: CARTÃO 1.
+2. HOMOFOBIA REAL E RAGE SEXUAL: Ataque claro e direto à orientação sexual. CARTÃO 2.
 3. XENOFOBIA E PRECONCEITO SOCIAL: Isolado: CARTÃO 3. Dois termos: CARTÃO 4. Repetição massiva: CARTÃO 5.
 4. RACISMO E ATRIBUTOS FÍSICOS:
    - CARTÃO 1: Ofensa à cor branca/atributos físicos.
-   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada/com 1 palavrão.
-   - BAN: "Macaco" 2+ VEZES, ódio direto à cor negra. Capacitismo: CARTÃO 2.
-5. REGRA CONDICIONAL DE AMBIGUIDADE ("ESCURO"):
-   No CS2, "escuro" é uma posição no mapa (Ex: "escuro baixo", "tá no escuro", "foi pro escuro").
-   - SE for usado CLARAMENTE como ataque direto com pronomes (Ex: "seu escuro", "você é um escuro"): BAN.
-   - SE for usado como posição (movimento/lugar) OU houver QUALQUER dúvida de interpretação, a IA DEVE recomendar a punição com base nos outros xingamentos e adicionar um ALERTA DUPLO para o analista humano decidir sobre o BAN (veja o Exemplo 3).
-6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
-7. AMEAÇA À VIDA E AGRESSÃO FÍSICA REAL: Isolada: CARTÃO 1. Múltiplas: CARTÃO 2. Abuso sexual extremo/morte: CARTÃO 5.
+   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada.
+   - BAN: "Macaco" 2+ VEZES, ódio direto à cor negra.
+5. REGRA DO MAPA ("ESCURO"):
+   No CS2, "escuro" é lugar (Ex: "escuro baixo", "tá no escuro").
+   - Se a fala for sobre lugar/posição: IGNORE a palavra, não é toxicidade.
+   - Se for ataque racista direto (Ex: "seu escuro nojento"): BAN.
+   - SE houver DÚVIDA se foi ofensa, aplique a punição baseada nos outros xingamentos e adicione o AVISO DUPLO (veja Exemplo 3).
+6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Apologia literal: BAN.
+7. AMEAÇA À VIDA E AGRESSÃO: Isolada: CARTÃO 1. Múltiplas: CARTÃO 2. Abuso sexual/morte: CARTÃO 5.
 8. REGRA DO ASSINANTE: Se Assinante = SIM, reduza a punição em 1 nível APENAS para a regra 1.
 9. ANTIJOGO: Se "Ranked": CARTÃO 1. Se "Lobby / GC Solo": ALERTA.
-10. CONDUTA DE MÁ FÉ: Mentiras/falsas dicas: ALERTA. Ghosting/Telar: CARTÃO 2.
-11. GORDOFOBIA: Geral: CARTÃO 1. Combo: CARTÃO 2. Repetição: CARTÃO 3.
-12. MACHISMO: Geral: CARTÃO 2. Combo: CARTÃO 3. Repetição: CARTÃO 4. Abuso machista: CARTÃO 4.
 
 --- INSTRUÇÕES DE SAÍDA (OBRIGATÓRIO) ---
 Você NÃO PODE usar linguagem conversacional (Ex: proibido dizer "Aqui está a análise").
 Sua resposta DEVE ter APENAS duas partes divididas EXATAMENTE por "---".
 
-EXEMPLO PERFEITO DE RESPOSTA 1:
-TOXICIDADE: "macaco do caralho" - "vou te matar"
+EXEMPLO PERFEITO 1 (RAGE COMUM / GÍRIA):
+TOXICIDADE: "porra, viado" - "vai tomar no cu" - "caralho"
 ---
-Recomendo **BAN** pois houve racismo direto combinado com ameaça à vida.
+Recomendo **ALERTA** (ou Cartão 1 no máximo) pois trata-se de rage comum e vícios de linguagem/gírias, sem ataque de ódio direto.
 
-EXEMPLO PERFEITO DE RESPOSTA 2:
+EXEMPLO PERFEITO 2 (POSIÇÃO DE MAPA):
 TOXICIDADE: NENHUMA
 ---
-Recomendo **SEM PUNIÇÃO** pois os jogadores estavam apenas comunicando posições do mapa.
+Recomendo **SEM PUNIÇÃO** pois os jogadores estavam apenas comunicando posições do mapa como "escuro baixo".
 
-EXEMPLO PERFEITO DE RESPOSTA 3 (QUANDO HOUVER A PALAVRA ESCURO SEM SER CLARAMENTE OFENSA):
-TOXICIDADE: "foi pro escuro" - "vai tomar no cu" - "porra, viado"
+EXEMPLO PERFEITO 3 (DÚVIDA NO RACISMO):
+TOXICIDADE: "filha da puta" - "escuro"
 ---
-Recomendo **CARTÃO 3** pelos insultos homofóbicos e rage. **ATENÇÃO ANALISTA:** Caso o termo "escuro" tenha sido utilizado com intenção racista na voz do jogador, aplique **BAN**. Se foi apenas comunicação de posição no mapa, mantenha o Cartão 3.
+Recomendo **ALERTA**. **ATENÇÃO ANALISTA:** Caso o termo "escuro" tenha sido utilizado com intenção racista na voz do jogador (e não posição do mapa), aplique **BAN**.
 
 --- CASO PARA CLASSIFICAÇÃO FORENSE ---
 [LOG DO SERVIDOR]: "{texto_usuario}"
@@ -66,7 +68,7 @@ Recomendo **CARTÃO 3** pelos insultos homofóbicos e rage. **ATENÇÃO ANALISTA
     resposta = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[
-            {"role": "system", "content": "Você é uma IA de extração de dados estrita. Você gera saídas exclusivamente no formato 'TOXICIDADE: ... \\n---\\n Recomendo...' e NUNCA adiciona texto extra."},
+            {"role": "system", "content": "Você é uma IA de auditoria rígida. Você entende de gírias brasileiras e NUNCA confunde gírias com homofobia real. Você gera saídas exclusivamente no formato 'TOXICIDADE: ... \\n---\\n Recomendo...' e NUNCA adiciona texto extra."},
             {"role": "user", "content": prompt_regras}
         ],
         temperature=0.0,

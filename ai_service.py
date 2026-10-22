@@ -24,18 +24,18 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 3. XENOFOBIA E PRECONCEITO SOCIAL: Um termo isolado (ex: "favelado"): CARTÃO 3. Dois termos/combo: CARTÃO 4. Repetição massiva (4x+): CARTÃO 5.
 4. RACISMO E ATRIBUTOS FÍSICOS (ATENÇÃO ÀS DIFERENÇAS):
    - CARTÃO 1: Ofensa à cor branca ou atributos físicos comuns. Capacitismo: CARTÃO 2.
-   - CARTÃO 4: Uso isolado ou simples das palavras "mono" (espanhol), "seu chimpanzé", "chimpanzé retardado".
-   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada OU acompanhada de apenas 1 palavrão genérico (Ex: "macaco do caralho", "macaco lixo", "macaco fdp").
-   - BAN: A palavra "macaco" dita 2 VEZES OU MAIS (repetição), acompanhada de múltiplos xingamentos combinados, ou qualquer ofensa/ódio direto direcionado à cor negra (Ex: "preto de merda", "odeio negros", "pretinho", "seu preto do caralho").
+   - CARTÃO 4: Uso isolado ou simples das palavras "macaco", "makako", "mono" (espanhol), "seu chimpanzé", "chimpanzé retardado".
+   - CARTÃO 5: Uso da palavra "macaco" acompanhada de apenas 1 palavrão genérico (Ex: "macaco do caralho", "macaco lixo", "macaco fdp").
+   - BAN: A palavra "macaco" dita 3 VEZES OU MAIS (repetição), acompanhada de múltiplos xingamentos combinados, ou qualquer ofensa/ódio direto direcionado à cor negra (Ex: "preto de merda", "odeio negros", "pretinho", "seu preto do caralho").
 5. REGRA DE AMBIGUIDADE ("ESCURO"):
    - Caso a partida tenha ocorrido nos mapas Dust 2, Ancient ou Inferno e o uso for estritamente geográfico/posição: IGNORE a palavra (SEM PUNIÇÃO).
    - Se for ataque racista explícito fora de contexto de mapa: BAN.
    - DÚVIDA: Aplique punição pelos outros xingamentos + AVISO DUPLO.
-6. NAZISMO E EXTREMISMO: Isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
+6. NAZISMO: Isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
 7. AMEAÇA À VIDA E AGRESSÃO FÍSICA REAL (GRAVÍSSIMO):
    - Ameaça de agressão física na vida real de forma isolada (Ex: "se eu te ver na rua te bato"): CARTÃO 1. 
    - Repetições e ameaças de morte (Ex: "se eu te ver na rua eu te mato e te bato, vou atirar em você"): CARTÃO 2.
-   - Ameaça literal de abuso sexual extremo à pessoa/família (Ex: "Vou estuprar sua irmãzinha"): CARTÃO 5. ATENÇÃO: Considere variações ortográficas ("estrupo", "estruparam") como ofensa real grave.
+   - Ameaça literal de abuso sexual extremo à família ou crianças/menores (Ex: "Vou estuprar sua irmãzinha"): CARTÃO 5. ATENÇÃO: Considere variações ortográficas ("estrupo", "estruparam") como ofensa real grave.
 8. REGRA DO ASSINANTE: Se Assinante = SIM, reduza a punição em 1 nível APENAS para a regra 1.
 9. ANTIJOGO: Se "Ranked": CARTÃO 1. Se "Lobby / GC Solo": ALERTA. (Trava: Se houver xingamento grave no relato, ignore antijogo).
 10. CONDUTA DE MÁ FÉ: Mentiras, falsas dicas: ALERTA. Ghosting/Telar: CARTÃO 2.

@@ -1,10 +1,7 @@
 import streamlit as st
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import tempfile
 import time
-import re
 from groq import Groq
 from pydub import AudioSegment
 
@@ -39,24 +36,16 @@ def resetar_app():
     st.session_state.arquivo_audio_atual = None
 
 df_casos = data_manager.carregar_csv()
-ai_service.configurar_api()
 
-model_zeus, _, _ = ai_service.obter_modelos_e_filtros()
+chave_groq_audio = st.secrets.get("GROQ_API_KEY_AUDIO")
+chave_groq_texto = st.secrets.get("GROQ_API_KEY_TEXT")
 
-chave_groq = st.secrets.get("GROQ_API_KEY")
-
-if not chave_groq:
-    st.error("⚠️ Chave da Groq não encontrada nos Secrets! Configure o cofre antes de continuar.")
+if not chave_groq_audio or not chave_groq_texto:
+    st.error("⚠️ Chaves da Groq não encontradas! Configure GROQ_API_KEY_AUDIO e GROQ_API_KEY_TEXT nos Secrets.")
     st.stop()
 
-groq_client = Groq(api_key=chave_groq)
-
-filtros_seguranca = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
+groq_client_audio = Groq(api_key=chave_groq_audio)
+groq_client_texto = Groq(api_key=chave_groq_texto)
 
 with st.sidebar:
     col_logo1, col_logo2, col_logo3 = st.columns([1.5, 1, 1.5])
@@ -123,23 +112,16 @@ with col_entrada:
                 else:
                     with st.spinner("⚡ Zeus está analisando..."):
                         try:
-                            prompt = ai_service.construir_prompt(df_casos, texto_report, status_assinante_texto, tipo_partida_texto)
-                            response = model_zeus.generate_content(prompt, safety_settings=filtros_seguranca, generation_config={"temperature": 0.0})
+                            texto_resposta = ai_service.analisar_com_groq(
+                                groq_client_texto, df_casos, texto_report, status_assinante_texto, tipo_partida_texto
+                            )
                             
-                            texto_resposta = ""
-                            if response.candidates and response.candidates[0].content:
-                                parts = response.candidates[0].content.parts
-                                texto_resposta = "".join([p.text for p in parts if hasattr(p, 'text')])
-
-                            if not texto_resposta:
-                                st.error("⚠️ O filtro de segurança da API impediu a exibição desta análise.")
-                            else:
-                                st.session_state.ultimo_texto = texto_report
-                                st.session_state.ultima_recomendacao = texto_resposta
-                                st.session_state.arquivo_audio_atual = None
-                                st.session_state.analise_concluida = True
-                                auth.registrar_uso_convidado()
-                                st.rerun()
+                            st.session_state.ultimo_texto = texto_report
+                            st.session_state.ultima_recomendacao = texto_resposta
+                            st.session_state.arquivo_audio_atual = None
+                            st.session_state.analise_concluida = True
+                            auth.registrar_uso_convidado()
+                            st.rerun()
                         except Exception as e:
                             st.error(f"Erro ao analisar texto: {e}")
 
@@ -186,7 +168,7 @@ with col_entrada:
                                 for tentativa in range(3):
                                     try:
                                         with open(chunk_path, "rb") as file:
-                                            transcricao = groq_client.audio.transcriptions.create(
+                                            transcricao = groq_client_audio.audio.transcriptions.create(
                                                 file=("audio.wav", file.read()),
                                                 model="whisper-large-v3",
                                                 prompt="CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban.",
@@ -210,21 +192,12 @@ with col_entrada:
                                 st.session_state.ultimo_texto = ""
                                 st.session_state.ultima_recomendacao = "⚠️ A transcrição falhou ou não identificou voz inteligível no áudio."
                             else:
-                                prompt_audio = ai_service.construir_prompt(df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio)
-                                
-                                res_audio = model_zeus.generate_content(
-                                    prompt_audio, 
-                                    safety_settings=filtros_seguranca, 
-                                    generation_config={"temperature": 0.0, "max_output_tokens": 1500}
+                                texto_recomendacao = ai_service.analisar_com_groq(
+                                    groq_client_texto, df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio
                                 )
 
-                                texto_recomendacao = ""
-                                if res_audio.candidates and res_audio.candidates[0].content:
-                                    parts = res_audio.candidates[0].content.parts
-                                    texto_recomendacao = "".join([p.text for p in parts if hasattr(p, 'text')])
-
                                 st.session_state.ultimo_texto = texto_transcrito
-                                st.session_state.ultima_recomendacao = texto_recomendacao if texto_recomendacao else "⚠️ A análise final foi bloqueada pelos filtros internos."
+                                st.session_state.ultima_recomendacao = texto_recomendacao
                             
                             st.session_state.arquivo_audio_atual = arquivo_audio
                             st.session_state.analise_concluida = True
@@ -234,7 +207,6 @@ with col_entrada:
                     except Exception as e:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
-    # Separação da resposta do Gemini entre Toxicidade e Veredito
     toxicidade_extraida = ""
     veredito_final = st.session_state.ultima_recomendacao
 
@@ -246,7 +218,6 @@ with col_entrada:
         if linha_tox and "NENHUMA" not in linha_tox.upper():
             toxicidade_extraida = linha_tox
 
-    # Exibe o painel de toxicidade na coluna esquerda apenas se houver infração
     if st.session_state.analise_concluida and toxicidade_extraida:
         with st.container(border=True):
             st.markdown("### 🚨 Toxicidade Extraída")

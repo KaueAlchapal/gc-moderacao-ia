@@ -28,12 +28,14 @@ if 'analise_concluida' not in st.session_state:
     st.session_state.ultimo_texto = ""
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
+    st.session_state.uploader_key = 0
 
 def resetar_app():
     st.session_state.analise_concluida = False
     st.session_state.ultimo_texto = ""
     st.session_state.ultima_recomendacao = ""
     st.session_state.arquivo_audio_atual = None
+    st.session_state.uploader_key += 1
 
 df_casos = data_manager.carregar_csv()
 
@@ -128,7 +130,7 @@ with col_entrada:
     with aba_audio:
         with st.container(border=True):
             with st.form("form_audio", clear_on_submit=False):
-                arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"])
+                arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"],key=f"audio_uploader_{st.session_state.uploader_key}")
                 
                 c3, c4 = st.columns(2)
                 with c3:

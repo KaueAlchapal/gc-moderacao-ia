@@ -43,18 +43,25 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 11. GORDOFOBIA: Geral: CARTÃO 1. Combo: CARTÃO 2. Repetição: CARTÃO 3.
 12. MACHISMO: Geral: CARTÃO 2. Combo: CARTÃO 3. Repetição: CARTÃO 4. Abuso machista ("estuprada", "piranha"): CARTÃO 4.
 
---- INSTRUÇÕES DE SAÍDA (OBRIGATÓRIO) ---
+--- INSTRUÇÕES DE SAÍDA E EXTRAÇÃO (OBRIGATÓRIO) ---
 Sua resposta DEVE ter APENAS duas partes divididas EXATAMENTE por "---". NÃO use linguagem conversacional.
+REGRA DE EXTRAÇÃO: Na linha "TOXICIDADE:", NUNCA extraia apenas a palavra ofensiva isolada. Extraia a FRASE COMPLETA que dá contexto à ofensa (Ex: em vez de extrair apenas "macaco" e "macacos", extraia a frase completa da toxicidade: "Você é um macaco cara, que isso, lá na selva dos macacos"). Se houver várias frases distintas, separe-as por " - ".
 
 EXEMPLO PERFEITO 1 (PALAVRÕES COMUNS + PRESENÇA DA PALAVRA ESCURO):
-TOXICIDADE: "filho da puta" - "merda"
+TOXICIDADE: "cala a boca seu filho da puta" - "acho que tem escuro pessoal"
 ---
-Recomendo **ALERTA** pelo uso de palavrões genéricos. **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno) e se foi usada apenas como call de mapa. Caso tenha sido usada como ofensa racista, altere o veredito para **BAN**.
+Recomendo **ALERTA** pelo uso de palavrões genéricos. **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno) e se foi usada apenas como call-out de mapa. Caso tenha sido usada como ofensa racista, altere o veredito para **BAN**.
 
 EXEMPLO PERFEITO 2 (BAN POR RACISMO EXPLÍCITO):
-TOXICIDADE: "seu preto do caralho" - "macaco negro"
+TOXICIDADE: "só macaco na live, vamos dar ban na Twitch, só macaco lá na selva" - "seu preto do caralho"
 ---
-Recomendo **BAN** pois há racismo explícito com uso de termos pejorativos direcionados à cor da pele.
+Recomendo **BAN** pois há racismo explícito com uso de termos pejorativos direcionados à cor da pele combinados com rage.
+
+EXEMPLO PERFEITO 3 (CARTÃO 4 POR TOXICIDADE):
+
+TOXICIDADE: "Você é idiota, seu chimpanzé do caralho" 
+--- Recomendo CARTÃO 4 pelo uso de termo que pode ser considerado racista "chimpanzé" associado a palavrão genérico.
+
 
 --- CASO PARA CLASSIFICAÇÃO FORENSE ---
 [LOG DO SERVIDOR]: "{texto_usuario}"

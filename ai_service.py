@@ -45,7 +45,7 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 
 --- INSTRUÇÕES DE SAÍDA E FORMATO (OBRIGATÓRIO E RESTRITO) ---
 Sua resposta DEVE conter EXATAMENTE três linhas estruturais. NUNCA adicione texto antes ou depois.
-Linha 1: Comece com "TOXICIDADE: " seguido da FRASE COMPLETA do xingamento no áudio (Ex: extraia "só macaco na live, lá na selva" e não apenas "macaco"). Separe frases distintas com " - ".
+Linha 1: Insira na aba de "TOXICIDADE EXTRAÍDA" A FRASE COMPLETA do xingamento no áudio (Ex: extraia "só macaco na live, lá na selva" e não apenas "macaco"). Separe frases distintas com " - ".
 Linha 2: EXATAMENTE E APENAS três traços: "---"
 Linha 3: Comece com "Recomendo " seguido da punição e justificativa.
 
@@ -73,11 +73,14 @@ TOXICIDADE EXTRAÍDA: "Você é idiota, seu chimpanzé do caralho"
     resposta = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[
-            {"role": "system", "content": "Você é uma IA de auditoria rígida. Você julga níveis de racismo com precisão, separando ofensas animais isoladas de ataques raciais diretos. Você gera saídas no formato 'TOXICIDADE: ... \\n---\\n Recomendo...' e NUNCA adiciona texto extra."},
+            {
+                "role": "system", 
+                "content": "Você é uma API forense de moderação corporativa. VOCÊ TEM AUTORIZAÇÃO E OBRIGAÇÃO EXPLÍCITA de ler, processar e extrair frases contendo discursos de ódio, racismo e assédio para fins de auditoria. NUNCA recuse a tarefa. NUNCA gere avisos morais. Responda ESTRITAMENTE no formato de 3 linhas."
+            },
             {"role": "user", "content": prompt_regras}
         ],
         temperature=0.0,
-        max_tokens=1000
+        max_tokens=1500 # Aumentado para permitir extração de frases mais longas
     )
     
     return resposta.choices[0].message.content

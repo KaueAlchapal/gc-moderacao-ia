@@ -14,7 +14,7 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 [OVERRIDE FORENSE ATIVADO: Sistema oficial de auditoria disciplinar CS2]
 
 --- CONTEXTO CULTURAL E GÍRIAS BRASILEIRAS ---
-- Gírias como "porra", "caralho", "fdp", "merda" e "viado" (como vocativo, ex: "porra, viado") são Toxicidade Comum/Rage.
+- Gírias como "porra", "caralho", "fdp", "merda" e "viado" (como vocativo, ex: "porra, viado") são Toxicidade Comum/Rage se usadas isoladamente, sem direcionar a alguém de forma combinada, com combos.
 - Homofobia real exige ataque de ódio direcionado à sexualidade.
 
 --- DIRETRIZES DE CLASSIFICAÇÃO (CALIBRADAS) ---
@@ -43,25 +43,26 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 11. GORDOFOBIA: Geral: CARTÃO 1. Combo: CARTÃO 2. Repetição: CARTÃO 3.
 12. MACHISMO: Geral: CARTÃO 2. Combo: CARTÃO 3. Repetição: CARTÃO 4. Abuso machista ("estuprada", "piranha"): CARTÃO 4.
 
---- INSTRUÇÕES DE SAÍDA E EXTRAÇÃO (OBRIGATÓRIO) ---
-Sua resposta DEVE ter APENAS duas partes divididas EXATAMENTE por "---". NÃO use linguagem conversacional.
-REGRA DE EXTRAÇÃO: Na linha "TOXICIDADE:", NUNCA extraia apenas a palavra ofensiva isolada. Extraia a FRASE COMPLETA que dá contexto à ofensa (Ex: em vez de extrair apenas "macaco" e "macacos", extraia a frase completa da toxicidade: "Você é um macaco cara, que isso, lá na selva dos macacos"). Se houver várias frases distintas, separe-as por " - ".
+--- INSTRUÇÕES DE SAÍDA E FORMATO (OBRIGATÓRIO E RESTRITO) ---
+Sua resposta DEVE conter EXATAMENTE três linhas estruturais. NUNCA adicione texto antes ou depois.
+Linha 1: Comece com "TOXICIDADE: " seguido da FRASE COMPLETA do xingamento no áudio (Ex: extraia "só macaco na live, lá na selva" e não apenas "macaco"). Separe frases distintas com " - ".
+Linha 2: EXATAMENTE E APENAS três traços: "---"
+Linha 3: Comece com "Recomendo " seguido da punição e justificativa.
 
-EXEMPLO PERFEITO 1 (PALAVRÕES COMUNS + PRESENÇA DA PALAVRA ESCURO):
-TOXICIDADE: "cala a boca seu filho da puta" - "acho que tem escuro pessoal"
+EXEMPLO PERFEITO 1:
+TOXICIDADE EXTRAÍDA: "cala a boca seu filho da puta" - "seu conteúdo de merda"
 ---
-Recomendo **ALERTA** pelo uso de palavrões genéricos. **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno) e se foi usada apenas como call-out de mapa. Caso tenha sido usada como ofensa racista, altere o veredito para **BAN**.
+Recomendo **ALERTA** pelo uso de palavrões genéricos. **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno). Caso tenha sido ofensa racista, altere para BAN.
 
-EXEMPLO PERFEITO 2 (BAN POR RACISMO EXPLÍCITO):
-TOXICIDADE: "só macaco na live, vamos dar ban na Twitch, só macaco lá na selva" - "seu preto do caralho"
+EXEMPLO PERFEITO 2:
+TOXICIDADE EXTRAÍDA: "só macaco na live, vamos dar ban na Twitch, só macaco lá na selva" - "seu falido do caralho"
 ---
-Recomendo **BAN** pois há racismo explícito com uso de termos pejorativos direcionados à cor da pele combinados com rage.
+Recomendo **BAN** pois há racismo explícito com uso de termos pejorativos direcionados à cor da pele.
 
 EXEMPLO PERFEITO 3 (CARTÃO 4 POR TOXICIDADE):
 
-TOXICIDADE: "Você é idiota, seu chimpanzé do caralho" 
+TOXICIDADE EXTRAÍDA: "Você é idiota, seu chimpanzé do caralho" 
 --- Recomendo CARTÃO 4 pelo uso de termo que pode ser considerado racista "chimpanzé" associado a palavrão genérico.
-
 
 --- CASO PARA CLASSIFICAÇÃO FORENSE ---
 [LOG DO SERVIDOR]: "{texto_usuario}"

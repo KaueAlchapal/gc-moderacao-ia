@@ -1,7 +1,7 @@
 import random
 
 def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_partida):
-    quantidade = min(len(dados_csv), 10)
+    quantidade = min(len(dados_csv), 3)
     exemplos = dados_csv.sample(quantidade, random_state=random.randint(1, 999999))
     historico = ""
     for _, row in exemplos.iterrows():

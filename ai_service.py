@@ -25,8 +25,8 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
 4. RACISMO E ATRIBUTOS FÍSICOS (ATENÇÃO ÀS DIFERENÇAS):
    - CARTÃO 1: Ofensa à cor branca ou atributos físicos comuns. Capacitismo: CARTÃO 2.
    - CARTÃO 4: Uso isolado ou simples das palavras "mono" (espanhol), "seu chimpanzé", "chimpanzé retardado".
-   - CARTÃO 5: Uso da palavra "macaco" apenas 1 VEZ isolada OU acompanhada de apenas 1 palavrão genérico (Ex: "macaco do caralho", "macaco lixo", "macaco fdp").
-   - BAN: A palavra "macaco" dita 2 VEZES OU MAIS (repetição), acompanhada de múltiplos xingamentos combinados, ou qualquer ofensa/ódio direto direcionado à cor negra (Ex: "preto de merda", "odeio negros", "pretinho", "seu preto do caralho").
+   - CARTÃO 5: Uso da palavra "macaco" apenas 1 ou 2 VEZEZ isolada OU acompanhada de apenas 1 palavrão genérico (Ex: "macaco do caralho - tá bom macaco", "macaco lixo", "macaco fdp").
+   - BAN: Uso das palavras "negro" ou "preto" para ofender, rotular ou identificar um jogador, mesmo sem palavrões (Ex: "tá na base o negro", "negro", "seu negro", "seu preto", "preto de merda"). A palavra "macaco" dita 3 VEZES OU MAIS é BAN. ATENÇÃO: Gírias regionais ("neguinho", "negão") sem ódio podem ser punidas levemente ou ignoradas dependendo do contexto, mas rotular alguém de "negro" ou "preto" é BAN IMEDIATO.
 5. REGRA DE AUDITORIA DA PALAVRA "ESCURO" (GATILHO OBRIGATÓRIO):
    Sempre que a palavra "escuro" aparecer no relato/transcrição:
    - CALCULE A PUNIÇÃO PRINCIPAL IGNORANDO A PALAVRA "ESCURO" (baseie-se apenas nos outros xingamentos existentes no texto (caso tenha), como "filho da puta", "merda", etc.).

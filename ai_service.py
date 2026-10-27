@@ -298,28 +298,47 @@ def _normalizar_punicao(valor):
     return None
 
 
-def _chamar_modelo(groq_client, mensagens, tentativas=3):
+def _chamar_modelo(groq_client, mensagens, tentativas=None):
+    # Textos longos: menos "raciocínio" para sobrar espaço para a resposta
+    tamanho = sum(len(m["content"]) for m in mensagens)
+    esforco_inicial = "low" if tamanho > 12000 else "medium"
+
+    configs = [
+        {"effort": esforco_inicial, "json_mode": True,  "max_tokens": 6000},
+        {"effort": "low",           "json_mode": False, "max_tokens": 6000},
+        {"effort": "low",           "json_mode": False, "max_tokens": 8000},
+    ]
+
     ultimo_erro = None
-    for i in range(tentativas):
+    for i, cfg in enumerate(configs):
         try:
-            resp = groq_client.chat.completions.create(
+            kwargs = dict(
                 model=MODELO,
                 messages=mensagens,
                 temperature=0.0,
-                max_tokens=4000,  # margem para o "raciocínio" do modelo + JSON
-                response_format={"type": "json_object"},
-                extra_body={"reasoning_effort": "medium", "include_reasoning": False},
+                max_tokens=cfg["max_tokens"],
+                extra_body={"reasoning_effort": cfg["effort"], "include_reasoning": False},
             )
-            dados = _extrair_json(resp.choices[0].message.content)
+            if cfg["json_mode"]:
+                kwargs["response_format"] = {"type": "json_object"}
+
+            resp = groq_client.chat.completions.create(**kwargs)
+            conteudo = resp.choices[0].message.content
+            if not conteudo or not conteudo.strip():
+                raise ValueError("Resposta vazia do modelo (provável estouro de tokens de raciocínio).")
+
+            dados = _extrair_json(conteudo)
             punicao = _normalizar_punicao(dados.get("punicao", ""))
             if punicao is None:
                 raise ValueError("Punição inválida retornada pelo modelo.")
             return dados, punicao
-        except Exception as e:  # rede, limite (429), JSON inválido etc.
+        except Exception as e:  # rede, limite (429), JSON inválido, resposta vazia etc.
             ultimo_erro = e
-            time.sleep(3 * (i + 1))
-    raise RuntimeError(f"Falha ao obter laudo do modelo após {tentativas} tentativas: {ultimo_erro}")
+            msg = str(e).lower()
+            espera = 20 if ("429" in msg or "rate limit" in msg or "rate_limit" in msg) else 3 * (i + 1)
+            time.sleep(espera)
 
+    raise RuntimeError(f"Falha ao obter laudo do modelo após {len(configs)} tentativas: {ultimo_erro}")
 
 # ---------------------------------------------------------------------------
 # Função principal (mesma assinatura de antes)

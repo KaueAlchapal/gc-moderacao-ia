@@ -1,13 +1,13 @@
 import streamlit as st
 import os
-import tempfile
-import time
+import re
+import html
 from groq import Groq
-from pydub import AudioSegment
 
 import auth
 import data_manager
 import ai_service
+import audio_service
 
 st.set_page_config(page_title="Zeus AI - Moderação", page_icon="⚡", layout="wide")
 
@@ -54,16 +54,16 @@ with st.sidebar:
     with col_logo2:
         if os.path.exists("logo.png"):
             st.image("logo.png", use_container_width=True)
-            
+
     st.markdown("<h3 style='text-align: center; margin-top: -15px;' anchor=False>Zeus Control</h3>", unsafe_allow_html=True)
-    
+
     if st.session_state.is_admin:
         st.markdown(f"<p style='text-align: center; color: #4CAF50; font-size: 14px; margin-top: -10px;'>✅ Corporativo | {len(df_casos)} casos salvos</p>", unsafe_allow_html=True)
     else:
         st.warning(f"👀 Convidado: {st.session_state.guest_uses}/2 usos")
-    
+
     st.divider()
-    
+
     if st.button("🔄 Nova Análise (Limpar Tela)", type="primary", use_container_width=True):
         resetar_app()
         st.rerun()
@@ -72,13 +72,13 @@ with st.sidebar:
         st.divider()
         st.markdown("### 🧠 Treinar IA (ML)")
         st.write("Ajuste a punição real aplicada:")
-        
+
         punicao_real = st.selectbox(
-            "Veredito:", 
+            "Veredito:",
             ["SEM PUNIÇÃO", "Alerta", "Cartão 1", "Cartão 2", "Cartão 3", "Cartão 4", "Cartão 5", "BAN"],
             label_visibility="collapsed"
         )
-        
+
         if st.button("💾 Salvar Feedback", use_container_width=True):
             data_manager.salvar_feedback(st.session_state.ultimo_texto, punicao_real)
             st.toast("✅ Caso salvo com sucesso na base de ML!", icon="🚀")
@@ -95,20 +95,20 @@ with col_entrada:
         with st.container(border=True):
             with st.form("form_texto", clear_on_submit=False):
                 texto_report = st.text_area("📋 Cole o report recebido:", height=150)
-                
+
                 c1, c2 = st.columns(2)
                 with c1:
                     status_assinante_texto = st.toggle("⭐ Jogador é assinante?", key="ass_t")
                 with c2:
                     tipo_partida_texto = st.selectbox(
-                        "🎮 Partida (Antijogo):", 
+                        "🎮 Partida (Antijogo):",
                         ["Não se aplica", "Ranked", "Lobby / GC Solo"], key="part_t"
                     )
                 submit_texto = st.form_submit_button("🔍 Executar Análise", use_container_width=True)
 
             if submit_texto:
                 if auth.bloqueio_limite_convidado():
-                    pass 
+                    pass
                 elif not texto_report.strip():
                     st.toast("⚠️ Cole algum texto antes de analisar.", icon="⚠️")
                 else:
@@ -117,7 +117,7 @@ with col_entrada:
                             texto_resposta = ai_service.analisar_com_groq(
                                 groq_client_texto, df_casos, texto_report, status_assinante_texto, tipo_partida_texto
                             )
-                            
+
                             st.session_state.ultimo_texto = texto_report
                             st.session_state.ultima_recomendacao = texto_resposta
                             st.session_state.arquivo_audio_atual = None
@@ -130,14 +130,14 @@ with col_entrada:
     with aba_audio:
         with st.container(border=True):
             with st.form("form_audio", clear_on_submit=False):
-                arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"],key=f"audio_uploader_{st.session_state.uploader_key}")
-                
+                arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"], key=f"audio_uploader_{st.session_state.uploader_key}")
+
                 c3, c4 = st.columns(2)
                 with c3:
                     status_assinante_audio = st.toggle("⭐ Jogador é assinante?", key="ass_a")
                 with c4:
                     tipo_partida_audio = st.selectbox(
-                        "🎮 Partida (Antijogo):", 
+                        "🎮 Partida (Antijogo):",
                         ["Não se aplica", "Ranked", "Lobby / GC Solo"], key="part_a"
                     )
                 submit_audio = st.form_submit_button("🎧 Transcrever e Julgar", use_container_width=True)
@@ -149,45 +149,8 @@ with col_entrada:
                     st.toast("⚠️ Faça o upload de um áudio.", icon="⚠️")
                 else:
                     try:
-                        with st.spinner("1/2 ⚡ Fatiando e transcrevendo áudio em alta velocidade..."):
-                            arquivo_audio.seek(0)
-                            
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                                temp_file.write(arquivo_audio.read())
-                                temp_path = temp_file.name
-
-                            audio_segment = AudioSegment.from_file(temp_path)
-                            chunk_length_ms = 120000 
-                            chunks = [audio_segment[i:i + chunk_length_ms] for i in range(0, len(audio_segment), chunk_length_ms)]
-                            
-                            transcricoes_parciais = []
-
-                            for index, chunk in enumerate(chunks):
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as chunk_file:
-                                    chunk.export(chunk_file.name, format="wav")
-                                    chunk_path = chunk_file.name
-
-                                for tentativa in range(3):
-                                    try:
-                                        with open(chunk_path, "rb") as file:
-                                            transcricao = groq_client_audio.audio.transcriptions.create(
-                                                file=("audio.wav", file.read()),
-                                                model="whisper-large-v3",
-                                                prompt="CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban.",
-                                                temperature=0.0
-                                            )
-                                        transcricoes_parciais.append(transcricao.text)
-                                        break
-                                    except Exception as e:
-                                        if tentativa == 2:
-                                            os.remove(chunk_path)
-                                            raise e
-                                        time.sleep(2)
-                                        
-                                os.remove(chunk_path)
-
-                            texto_transcrito = " ".join(transcricoes_parciais)
-                            os.remove(temp_path)
+                        with st.spinner("1/2 ⚡ Transcrevendo áudio em alta velocidade..."):
+                            texto_transcrito = audio_service.transcrever_audio(groq_client_audio, arquivo_audio)
 
                         with st.spinner("2/2 🧠 Aplicando regras corporativas..."):
                             if not texto_transcrito.strip():
@@ -200,7 +163,7 @@ with col_entrada:
 
                                 st.session_state.ultimo_texto = texto_transcrito
                                 st.session_state.ultima_recomendacao = texto_recomendacao
-                            
+
                             st.session_state.arquivo_audio_atual = arquivo_audio
                             st.session_state.analise_concluida = True
                             auth.registrar_uso_convidado()
@@ -215,11 +178,11 @@ with col_entrada:
 
     if not veredito_final and st.session_state.analise_concluida:
         veredito_final = "⚠️ O modelo falhou a gerar o laudo ou retornou um valor nulo. Tente executar a análise novamente."
-    elif "---" in veredito_final:
-        partes = veredito_final.split("---", 1)
-        linha_tox = partes[0].replace("TOXICIDADE:", "").strip()
-        veredito_final = partes[1].strip()
-        
+    elif re.search(r"(^|\n)\s*---\s*(\n|$)", veredito_final):
+        partes = re.split(r"\n?\s*---\s*\n?", veredito_final, maxsplit=1)
+        linha_tox = re.sub(r"^\s*TOXICIDADE(\s+EXTRA[ÍI]DA)?\s*:\s*", "", partes[0], flags=re.IGNORECASE).strip()
+        veredito_final = partes[1].strip() if len(partes) > 1 else veredito_final
+
         if linha_tox and "NENHUMA" not in linha_tox.upper():
             toxicidade_extraida = linha_tox
 
@@ -227,7 +190,7 @@ with col_entrada:
         with st.container(border=True):
             st.markdown("### 🚨 Toxicidade Extraída")
             st.markdown(
-                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.8; border-left: 4px solid #ff4b4b; color: #ff4b4b; font-weight: bold;'>{toxicidade_extraida}</div>", 
+                f"<div style='background-color: #1e1e1e; padding: 15px; border-radius: 8px; line-height: 1.8; border-left: 4px solid #ff4b4b; color: #ff4b4b; font-weight: bold;'>{html.escape(toxicidade_extraida)}</div>",
                 unsafe_allow_html=True
             )
 
@@ -237,18 +200,18 @@ with col_saida:
             st.markdown("### 📢 Veredito do Zeus")
             if st.session_state.arquivo_audio_atual is not None:
                 st.audio(st.session_state.arquivo_audio_atual)
-            
+
             if not st.session_state.ultimo_texto.strip():
                 st.warning(veredito_final)
             else:
                 st.success(veredito_final)
-                
+
                 st.markdown("**Contexto integral do caso:**")
                 st.text_area(
-                    label="Transcrição", 
-                    value=st.session_state.ultimo_texto, 
-                    height=450, 
-                    disabled=True, 
+                    label="Transcrição",
+                    value=st.session_state.ultimo_texto,
+                    height=450,
+                    disabled=True,
                     label_visibility="collapsed"
                 )
     else:

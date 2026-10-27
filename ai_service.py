@@ -119,18 +119,22 @@ Regras do campo motivo:
 # ---------------------------------------------------------------------------
 # Utilidades
 # ---------------------------------------------------------------------------
-def _norm(texto):
-    texto = unicodedata.normalize("NFKD", str(texto).lower())
-    return "".join(c for c in texto if not unicodedata.combining(c))
-
-
-def _segmentar(texto):
-    """Divide o texto em frases curtas (por linha, por ' - ' e por pontuação)."""
+def _segmentar(texto, limite=140):
+    """Divide o texto em frases curtas (por linha, por ' - ' e por pontuação).
+    Frases muito longas (sem pontuação) são quebradas em blocos de ~140 caracteres."""
     texto = texto.replace("\r", "\n")
     partes = re.split(r"\n+|\s+[-–—]\s+|(?<=[.!?…])\s+", texto)
     segmentos = []
     for p in partes:
         p = p.strip().strip('"“”').strip()
+        if not p:
+            continue
+        while len(p) > limite:
+            corte = p.rfind(" ", 0, limite)
+            if corte <= 0:
+                corte = limite
+            segmentos.append(p[:corte].strip())
+            p = p[corte:].strip()
         if p:
             segmentos.append(p)
     return segmentos

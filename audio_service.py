@@ -1,18 +1,27 @@
 import io
 import os
+import re
 import tempfile
 import time
 
 from pydub import AudioSegment
+from pydub.effects import normalize
 
 MODELO_WHISPER = "whisper-large-v3"
-CHUNK_ALVO_MS = 5 * 60 * 1000   # ~5 min por pedaço (mono 16 kHz = ~9,6 MB, abaixo do limite)
-JANELA_BUSCA_MS = 10_000        # procura um momento de silêncio nos 10 s antes do corte
+CHUNK_ALVO_MS = 5 * 60 * 1000   # ~5 min por pedaço (mono 16 kHz = ~9,6 MB)
+JANELA_BUSCA_MS = 10_000        # procura silêncio nos 10 s antes do corte
 PASSO_MS = 250
+LIMITE_SILENCIO_DBFS = -55      # pedaço mais baixo que isso é tratado como silêncio
 
-PROMPT_BASE = (
-    "Conversa de jogadores em uma partida de CS2, em português do Brasil e às vezes em espanhol, "
-    "com gírias e palavrões. Transcrição literal, sem censura."
+# Só vocabulário (sem frases de instrução, o Whisper as repete como se fossem fala)
+PROMPT_WHISPER = "CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban."
+
+# Frases que o Whisper costuma "inventar" em silêncio/ruído
+ALUCINACOES = re.compile(
+    r"(transcri\w*\s+literal|sem\s+censura|gracias\s+por\s+ver|obrigad[oa]\s+por\s+(assistir|ver)|"
+    r"legendas?\s+pel[oa]|inscreva-se|subscribe|thanks\s+for\s+watching|"
+    r"amara\.org|tchau\.?$)",
+    re.IGNORECASE,
 )
 
 
@@ -39,7 +48,37 @@ def _dividir(audio):
     return pedacos
 
 
-def _transcrever_pedaco(groq_client, pedaco, prompt):
+def _g(obj, chave, padrao=None):
+    """Lê um campo tanto de dict quanto de objeto."""
+    if isinstance(obj, dict):
+        return obj.get(chave, padrao)
+    return getattr(obj, chave, padrao)
+
+
+def _obter_segmentos(resp):
+    segs = _g(resp, "segments")
+    if segs is None:
+        extra = getattr(resp, "model_extra", None) or {}
+        segs = extra.get("segments")
+    return segs
+
+
+def _segmento_valido(seg):
+    """Descarta segmentos que parecem alucinação do Whisper."""
+    texto = (_g(seg, "text", "") or "").strip()
+    if not texto or ALUCINACOES.search(texto):
+        return False
+    no_speech = _g(seg, "no_speech_prob", 0.0) or 0.0
+    logprob = _g(seg, "avg_logprob", 0.0) or 0.0
+    compressao = _g(seg, "compression_ratio", 0.0) or 0.0
+    if no_speech > 0.6 and logprob < -1.0:
+        return False
+    if compressao > 2.4 and logprob < -0.8:
+        return False
+    return True
+
+
+def _transcrever_pedaco(groq_client, pedaco):
     buffer = io.BytesIO()
     pedaco.export(buffer, format="wav")
     dados = buffer.getvalue()
@@ -50,10 +89,18 @@ def _transcrever_pedaco(groq_client, pedaco, prompt):
             resp = groq_client.audio.transcriptions.create(
                 file=("audio.wav", dados),
                 model=MODELO_WHISPER,
-                prompt=prompt,
+                prompt=PROMPT_WHISPER,
+                response_format="verbose_json",
                 temperature=0.0,
             )
-            return resp.text.strip()
+            segs = _obter_segmentos(resp)
+            if segs:
+                linhas = [(_g(s, "text", "") or "").strip() for s in segs if _segmento_valido(s)]
+                return [l for l in linhas if l]
+            # Fallback: sem segmentos, usa o texto bruto filtrado por frase
+            texto = (_g(resp, "text", "") or "").strip()
+            frases = re.split(r"(?<=[.!?…])\s+", texto)
+            return [f.strip() for f in frases if f.strip() and not ALUCINACOES.search(f)]
         except Exception as e:
             ultimo_erro = e
             time.sleep(3 * (tentativa + 1))
@@ -61,7 +108,7 @@ def _transcrever_pedaco(groq_client, pedaco, prompt):
 
 
 def transcrever_audio(groq_client, arquivo_audio):
-    """Recebe o arquivo do st.file_uploader e devolve a transcrição completa."""
+    """Recebe o arquivo do st.file_uploader e devolve a transcrição (uma frase/segmento por linha)."""
     sufixo = os.path.splitext(arquivo_audio.name)[1] or ".wav"
     with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
         tmp.write(arquivo_audio.getvalue())
@@ -69,16 +116,16 @@ def transcrever_audio(groq_client, arquivo_audio):
 
     try:
         audio = AudioSegment.from_file(caminho)
-        audio = audio.set_frame_rate(16000).set_channels(1)  # reduz tamanho sem perder fala
-        pedacos = _dividir(audio)
+        audio = audio.set_frame_rate(16000).set_channels(1)
+        if audio.dBFS != float("-inf"):
+            audio = normalize(audio, headroom=1.0)  # sobe o volume de áudios baixos
 
-        textos = []
-        for pedaco in pedacos:
-            # Continuidade: o fim do pedaço anterior ajuda o Whisper no começo do próximo
-            contexto = textos[-1][-150:] if textos else ""
-            prompt = f"{PROMPT_BASE} {contexto}".strip()
-            textos.append(_transcrever_pedaco(groq_client, pedaco, prompt))
-        return " ".join(t for t in textos if t)
+        linhas = []
+        for pedaco in _dividir(audio):
+            if pedaco.dBFS < LIMITE_SILENCIO_DBFS:  # pedaço praticamente mudo: nem envia
+                continue
+            linhas.extend(_transcrever_pedaco(groq_client, pedaco))
+        return "\n".join(linhas)
     finally:
         if os.path.exists(caminho):
             os.remove(caminho)

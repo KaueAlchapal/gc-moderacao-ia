@@ -8,29 +8,72 @@ from pydub import AudioSegment
 from pydub.effects import normalize
 
 MODELO_WHISPER = "whisper-large-v3"
-CHUNK_ALVO_MS = 5 * 60 * 1000   # ~5 min por pedaço (mono 16 kHz = ~9,6 MB)
-JANELA_BUSCA_MS = 10_000        # procura silêncio nos 10 s antes do corte
+CHUNK_ALVO_MS = 4 * 60 * 1000   # ~4 min por pedaço (16 kHz mono 16 bits = ~7,7 MB)
+JANELA_BUSCA_MS = 10_000        # procura um ponto de baixo volume antes do corte
 PASSO_MS = 250
-LIMITE_SILENCIO_DBFS = -55      # pedaço mais baixo que isso é tratado como silêncio
+PAD_FALA_MS = 400               # folga ao redor de cada trecho de voz
+GAP_ENTRE_FALAS_MS = 300        # silêncio curto colocado entre trechos de voz
 
-# Só vocabulário (sem frases de instrução, o Whisper as repete como se fossem fala)
+# Somente vocabulário (frases de instrução são repetidas pelo Whisper como se fossem fala)
 PROMPT_WHISPER = "CS2, gaming, toxicidade, palavrões, ofensa, gameplay, report, ban."
 
-# Frases que o Whisper costuma "inventar" em silêncio/ruído
+# Frases que o Whisper costuma "inventar" em ruído/silêncio
 ALUCINACOES = re.compile(
     r"(transcri\w*\s+literal|sem\s+censura|gracias\s+por\s+ver|obrigad[oa]\s+por\s+(assistir|ver)|"
-    r"legendas?\s+pel[oa]|inscreva-se|subscribe|thanks\s+for\s+watching|"
-    r"amara\.org|tchau\.?$)",
+    r"legendas?\s+pel[oa]|inscreva-se|subscribe|thanks\s+for\s+watching|amara\.org)",
+    re.IGNORECASE,
+)
+
+# Repetições destes termos NUNCA são removidas (a contagem importa para a punição)
+TERMOS_PRESERVAR = re.compile(
+    r"(macac|mangac|mono|negr|pret[oa]|viad|veado|puta|fdp|vtnc|arromb|retard|estupr|estrup|"
+    r"favelad|chimpanz|gorila|nazi|hitler|merda|caralho|porra|mata|matar)",
     re.IGNORECASE,
 )
 
 
+# ---------------------------------------------------------------------------
+# Detecção de voz (VAD simples, relativo ao ruído de fundo de cada arquivo)
+# ---------------------------------------------------------------------------
+def _db_janelas(audio, janela_ms=100):
+    valores = []
+    for i in range(0, len(audio), janela_ms):
+        db = audio[i:i + janela_ms].dBFS
+        valores.append(-90.0 if db == float("-inf") else db)
+    return valores
+
+
+def _somente_voz(audio):
+    """Mantém apenas os trechos com voz. Se nada for detectado, devolve o áudio original."""
+    from pydub.silence import detect_nonsilent
+
+    dbs = sorted(_db_janelas(audio))
+    if not dbs:
+        return audio
+    piso = dbs[int(len(dbs) * 0.10)]                     # ruído de fundo (percentil 10)
+    limiar = min(piso + 12, audio.dBFS - 6)
+
+    trechos = detect_nonsilent(audio, min_silence_len=600, silence_thresh=limiar, seek_step=50)
+    if not trechos:
+        return audio
+
+    resultado = AudioSegment.empty()
+    gap = AudioSegment.silent(duration=GAP_ENTRE_FALAS_MS, frame_rate=audio.frame_rate)
+    for ini, fim in trechos:
+        ini = max(ini - PAD_FALA_MS, 0)
+        fim = min(fim + PAD_FALA_MS, len(audio))
+        resultado += audio[ini:fim] + gap
+    return resultado if len(resultado) > 1000 else audio
+
+
+# ---------------------------------------------------------------------------
+# Divisão em pedaços (cortando em pontos de baixo volume)
+# ---------------------------------------------------------------------------
 def _achar_corte(audio, alvo_ms):
-    """Escolhe o ponto de menor volume perto do alvo para não cortar palavras ao meio."""
     inicio = max(alvo_ms - JANELA_BUSCA_MS, 0)
     melhor_t, melhor_db = alvo_ms, float("inf")
     for t in range(inicio, alvo_ms, PASSO_MS):
-        db = audio[t:t + 300].dBFS  # -inf para silêncio total
+        db = audio[t:t + 300].dBFS
         if db < melhor_db:
             melhor_db, melhor_t = db, t
     return melhor_t
@@ -48,8 +91,10 @@ def _dividir(audio):
     return pedacos
 
 
+# ---------------------------------------------------------------------------
+# Transcrição
+# ---------------------------------------------------------------------------
 def _g(obj, chave, padrao=None):
-    """Lê um campo tanto de dict quanto de objeto."""
     if isinstance(obj, dict):
         return obj.get(chave, padrao)
     return getattr(obj, chave, padrao)
@@ -64,7 +109,6 @@ def _obter_segmentos(resp):
 
 
 def _segmento_valido(seg):
-    """Descarta segmentos que parecem alucinação do Whisper."""
     texto = (_g(seg, "text", "") or "").strip()
     if not texto or ALUCINACOES.search(texto):
         return False
@@ -97,7 +141,6 @@ def _transcrever_pedaco(groq_client, pedaco):
             if segs:
                 linhas = [(_g(s, "text", "") or "").strip() for s in segs if _segmento_valido(s)]
                 return [l for l in linhas if l]
-            # Fallback: sem segmentos, usa o texto bruto filtrado por frase
             texto = (_g(resp, "text", "") or "").strip()
             frases = re.split(r"(?<=[.!?…])\s+", texto)
             return [f.strip() for f in frases if f.strip() and not ALUCINACOES.search(f)]
@@ -107,8 +150,23 @@ def _transcrever_pedaco(groq_client, pedaco):
     raise RuntimeError(f"Falha na transcrição após 3 tentativas: {ultimo_erro}")
 
 
+def _colapsar_loops(linhas):
+    """Remove loops de alucinação (mesma frase 4+ vezes seguidas), exceto termos ofensivos."""
+    saida, anterior, repeticoes = [], None, 0
+    for l in linhas:
+        chave = re.sub(r"\W+", " ", l.lower()).strip()
+        if chave == anterior:
+            repeticoes += 1
+        else:
+            anterior, repeticoes = chave, 1
+        if repeticoes > 3 and not TERMOS_PRESERVAR.search(chave):
+            continue
+        saida.append(l)
+    return saida
+
+
 def transcrever_audio(groq_client, arquivo_audio):
-    """Recebe o arquivo do st.file_uploader e devolve a transcrição (uma frase/segmento por linha)."""
+    """Recebe o arquivo do st.file_uploader e devolve a transcrição (um segmento por linha)."""
     sufixo = os.path.splitext(arquivo_audio.name)[1] or ".wav"
     with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
         tmp.write(arquivo_audio.getvalue())
@@ -116,16 +174,16 @@ def transcrever_audio(groq_client, arquivo_audio):
 
     try:
         audio = AudioSegment.from_file(caminho)
-        audio = audio.set_frame_rate(16000).set_channels(1)
-        if audio.dBFS != float("-inf"):
-            audio = normalize(audio, headroom=1.0)  # sobe o volume de áudios baixos
+        audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)  # 16 kHz, mono, 16 bits
+        if audio.dBFS == float("-inf"):
+            return ""
+        audio = normalize(audio, headroom=1.0)   # sobe o volume de áudios baixos
+        audio = _somente_voz(audio)              # descarta ruído de fundo (onde o Whisper alucina)
 
         linhas = []
         for pedaco in _dividir(audio):
-            if pedaco.dBFS < LIMITE_SILENCIO_DBFS:  # pedaço praticamente mudo: nem envia
-                continue
             linhas.extend(_transcrever_pedaco(groq_client, pedaco))
-        return "\n".join(linhas)
+        return "\n".join(_colapsar_loops(linhas))
     finally:
         if os.path.exists(caminho):
             os.remove(caminho)

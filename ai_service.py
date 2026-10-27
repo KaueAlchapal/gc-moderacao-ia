@@ -13,17 +13,22 @@ PUNICOES_VALIDAS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Léxico de segurança (rede de proteção em código, independente do modelo)
-# Aplicado sobre texto sem acentos e em minúsculas.
+# Léxicos de segurança (rede de proteção em código, independente do modelo).
+# Aplicados sobre texto em minúsculas e SEM acentos.
 # ---------------------------------------------------------------------------
 LEXICO_GRAVE = re.compile(
-    r"\b(macac\w*|monos?|chimpanz\w*|gorila\w*|viad\w*|veado\w*|bicha\w*|"
+    r"\b(macac\w*|mangac\w*|monos?|chimpanz\w*|gorila\w*|viad\w*|veado\w*|bicha\w*|"
     r"boiola\w*|estupr\w*|estrup\w*|favelad\w*|crioul\w*|nazi\w*|hitler)\b"
 )
-LEXICO_RACIAL = re.compile(r"\b(macac\w*|monos?|chimpanz\w*|gorila\w*)\b")
+LEXICO_RACIAL = re.compile(r"\b(macac\w*|mangac\w*|monos?|chimpanz\w*|gorila\w*)\b")
+LEXICO_INSULTO = re.compile(
+    r"\b(filh[oa]s? da puta|fdp|vtnc|vsf|arrombad\w*|retardad\w*|idiota\w*|burr[oa]s?|"
+    r"otari\w*|babaca\w*|desgracad\w*|lixo|puta\w*|hijos? de puta|mierda|gilipollas|"
+    r"pendej\w*|cabron\w*|culiad\w*|cuzao|merda)\b"
+)
 
 CONTADORES = {
-    "macaco (e variações)": re.compile(r"\bmacac\w*"),
+    "macaco (e variações)": re.compile(r"\b(macac\w*|mangac\w*)"),
     "mono (espanhol para macaco)": re.compile(r"\bmonos?\b"),
     "chimpanzé / gorila": re.compile(r"\b(chimpanz\w*|gorila\w*)"),
     "negro / preto": re.compile(r"\b(negr[oa]s?|pret[oa]s?)\b"),
@@ -44,6 +49,8 @@ REGRAS = """
 === LIVRO DE REGRAS (siga à risca) ===
 Se mais de uma regra for acionada, vale a punição MAIS GRAVE (não some), exceto onde a regra mandar combinar.
 Use as CONTAGENS fornecidas pelo sistema como fatos. Não recontar.
+Transcrições de áudio podem ter erros de reconhecimento: interprete palavras foneticamente parecidas
+com ofensas pelo contexto (ex.: "mangaco" = "macaco").
 
 0. SEM INFRAÇÃO (comunicação normal, tática, posições do mapa): SEM PUNIÇÃO.
 
@@ -119,6 +126,11 @@ Regras do campo motivo:
 # ---------------------------------------------------------------------------
 # Utilidades
 # ---------------------------------------------------------------------------
+def _norm(texto):
+    texto = unicodedata.normalize("NFKD", str(texto).lower())
+    return "".join(c for c in texto if not unicodedata.combining(c))
+
+
 def _segmentar(texto, limite=140):
     """Divide o texto em frases curtas (por linha, por ' - ' e por pontuação).
     Frases muito longas (sem pontuação) são quebradas em blocos de ~140 caracteres."""
@@ -259,19 +271,22 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
         except (TypeError, ValueError):
             continue
 
-    # --- Rede de segurança: frases com termos graves que o modelo não listou ---
-    hits = {i for i, s in enumerate(segmentos, start=1) if LEXICO_GRAVE.search(_norm(s))}
+    # --- Rede de segurança: frases com termos ofensivos que o modelo não listou ---
+    normalizados = {i: _norm(s) for i, s in enumerate(segmentos, start=1)}
+    hits_graves = {i for i, s in normalizados.items() if LEXICO_GRAVE.search(s)}
+    hits_insulto = {i for i, s in normalizados.items() if LEXICO_INSULTO.search(s)}
+
     aviso_extra = ""
     if punicao == "SEM PUNIÇÃO":
-        if any(LEXICO_RACIAL.search(_norm(segmentos[i - 1])) for i in hits):
+        if hits_graves or hits_insulto:
             aviso_extra = (
-                " **⚠️ AVISO AO ANALISTA:** foram detectados termos sensíveis (ex.: 'macaco'/'mono') "
-                "no texto. Revise manualmente o contexto antes de concluir."
+                " **⚠️ AVISO AO ANALISTA:** foram detectados termos possivelmente ofensivos no texto. "
+                "Revise manualmente o contexto antes de concluir."
             )
     else:
-        ids |= hits
+        ids |= hits_graves | hits_insulto
 
-    # --- Toxicidade extraída: sempre literal, em um único par de aspas, separada por " - " ---
+    # --- Toxicidade extraída: literal, em UM par de aspas, separada por " - " ---
     if ids:
         trechos = [segmentos[i - 1].replace('"', "'") for i in sorted(ids)]
         toxicidade = '"' + " - ".join(trechos) + '"'

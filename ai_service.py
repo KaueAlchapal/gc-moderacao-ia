@@ -12,6 +12,10 @@ PUNICOES_VALIDAS = [
     "CARTÃO 3", "CARTÃO 4", "CARTÃO 5", "BAN",
 ]
 
+# Limites da extração (ajuste aqui se quiser mais ou menos frases)
+MAX_GRAVES = 12   # máximo de frases graves na "Toxicidade extraída"
+MAX_COMUNS = 6    # máximo de frases comuns quando NÃO há nenhuma frase grave
+
 # ===========================================================================
 # LÉXICOS E PADRÕES (editar aqui para ajustar exceções)
 # Tudo é aplicado sobre texto em minúsculas e SEM acentos.
@@ -24,10 +28,40 @@ LEXICO_GRAVE = re.compile(
     r"boiola\w*|estupr\w*|estrup\w*|favelad\w*|crioul\w*|nazi\w*|hitler)\b"
 )
 LEXICO_RACIAL = re.compile(r"\b(macac\w*|mangac\w*|monos?|chimpanz\w*|gorila\w*)\b")
+
+# Expressões comuns que NÃO contam como machismo (removidas antes de checar "puta")
+LIMPAR_COMUNS = re.compile(r"filh[oa]s? da puta|puta que (o )?pariu|puta merda")
+
+# --- Ofensas PESADAS (machismo, gordofobia, social, capacitismo, sexual) ---
+LEXICO_PESADO = re.compile(
+    r"\b(puta\w*|vagabund\w*|piranha\w*|vadia\w*|vacas?|bucet\w*|"
+    r"gord[oa]s?|gordinh\w*|gordao|gorgonzol\w*|baleia|obes[oa]s?|"
+    r"favelad\w*|pobres?|pobretao|pobretoes|"
+    r"pcd|aleijad\w*|mongol\w*|retardad\w*|deficiente|autista|"
+    r"estupr\w*|estrup\w*|te mato|vou te matar|vou matar)\b"
+)
+
+# --- Xingamentos COMUNS (toxicidade comum) ---
 LEXICO_INSULTO = re.compile(
-    r"\b(filh[oa]s? da puta|fdp|vtnc|vsf|arrombad\w*|retardad\w*|idiota\w*|burr[oa]s?|"
-    r"otari\w*|babaca\w*|desgracad\w*|lixo|puta\w*|hijos? de puta|mierda|gilipollas|"
-    r"pendej\w*|cabron\w*|culiad\w*|cuzao|merda)\b"
+    r"\b(filh[oa]s? da puta|fdp|vtnc|vsf|arrombad\w*|idiota\w*|burr[oa]s?|"
+    r"otari\w*|babaca\w*|desgracad\w*|lixo|hijos? de puta|mierda|gilipollas|"
+    r"pendej\w*|cabron\w*|culiad\w*|cuzao|merda|bosta|corno)\b"
+)
+
+# --- Categorias (usadas para escolher frases variadas quando há muitas graves) ---
+CATEGORIAS = {
+    "racismo": re.compile(r"\b(macac\w*|mangac\w*|monos?|chimpanz\w*|gorila\w*|negr\w*|pretinh\w*|pret[oa]s?|crioul\w*)\b"),
+    "homofobia": re.compile(r"\b(viad\w*|veado\w*|bicha\w*|boiola\w*|gays?)\b"),
+    "sexual/machismo": re.compile(r"\b(puta\w*|vagabund\w*|piranha\w*|vadia\w*|vacas?|bucet\w*|estupr\w*|estrup\w*)\b"),
+    "gordofobia": re.compile(r"\b(gord[oa]s?|gordinh\w*|gordao|gorgonzol\w*|baleia|obes[oa]s?)\b"),
+    "social": re.compile(r"\b(favelad\w*|pobres?|pobretao|pobretoes)\b"),
+    "capacitismo": re.compile(r"\b(pcd|aleijad\w*|mongol\w*|retardad\w*|deficiente|autista)\b"),
+    "extremismo/ameaça": re.compile(r"\b(nazi\w*|hitler|te mato|vou te matar|vou matar)\b"),
+}
+# Termos de peso máximo (usados para priorizar quando é preciso cortar)
+LEXICO_TOP = re.compile(
+    r"\b(macac\w*|mangac\w*|monos?|chimpanz\w*|gorila\w*|estupr\w*|estrup\w*|nazi\w*|hitler|"
+    r"negr\w*|pretinh\w*|crioul\w*|te mato|vou te matar)\b"
 )
 
 # --- "VIADO": vocativo/regionalismo x ataque ---
@@ -57,10 +91,10 @@ VIADO_VOCATIVO = re.compile(
 NEGO_RX = re.compile(r"\bnegos?\b")
 NEGAO_RX = re.compile(r"\b(negao|negoes|neguinh[oa]s?|neguim)\b")
 NEGRO_RX = re.compile(r"\b(negr[oa]s?|negrao|negroes)\b")
-PRETO_RX = re.compile(r"\bpret[oa]s?\b")
+PRETO_RX = re.compile(r"\bpret(?:[oa]|inh[oa])s?\b")
 PEJORATIVO_RX = re.compile(
     r"\b(merda|nojent\w*|imund\w*|fedid\w*|fedor\w*|safad\w*|lixo|burr[oa]s?|macac\w*|monos?|"
-    r"escrav\w*|senzala|fdp|arrombad\w*|desgracad\w*)\b"
+    r"escrav\w*|senzala|fdp|arrombad\w*|desgracad\w*|bosta)\b"
 )
 
 CONTADORES = {
@@ -70,7 +104,7 @@ CONTADORES = {
     "negro / negra / negrão (termo sensível)": NEGRO_RX,
     "negão / neguinho (coloquial)": NEGAO_RX,
     "nego (gíria neutra)": NEGO_RX,
-    "preto / preta (depende do contexto)": PRETO_RX,
+    "preto / preta / pretinho (depende do contexto)": PRETO_RX,
     "escuro": re.compile(r"\bescur\w*"),
 }
 
@@ -126,8 +160,8 @@ respeite-a, a menos que o contexto da frase a contradiga claramente.
    - "nego" (gíria regional, equivale a "o cara"/"o pessoal", ex.: "nego tá ligado"): NEUTRO. Ignore.
    - "negão", "neguinho" (coloquial, ex.: "fala, negão"): NÃO são racismo por si só. Ignore.
      Se vierem acompanhados de ofensa direta ao jogador na mesma frase (ex.: "negão de merda"): CARTÃO 3.
-   - "preto"/"preta": só é racismo se usado para ofender ou rotular uma pessoa (BAN). Cor de objeto,
-     skin ou tela é neutro.
+   - "preto"/"preta"/"pretinho": só é racismo se usado para ofender ou rotular uma pessoa (BAN).
+     Cor de objeto, skin ou tela é neutro.
 
 5. NAZISMO E EXTREMISMO: isolado: CARTÃO 4. Com xingamentos: CARTÃO 5. Apologia literal: BAN.
 
@@ -158,19 +192,28 @@ respeite-a, a menos que o contexto da frase a contradiga claramente.
 FORMATO_SAIDA = """
 === FORMATO DE SAÍDA (JSON puro, sem texto fora dele) ===
 {
-  "ids_toxicos": [números das frases ofensivas],
+  "ids_graves": [números das frases com ofensa GRAVE],
+  "ids_comuns": [números das frases com ofensa COMUM],
   "punicao": "SEM PUNIÇÃO | ALERTA | CARTÃO 1 | CARTÃO 2 | CARTÃO 3 | CARTÃO 4 | CARTÃO 5 | BAN",
   "motivo": "uma frase começando com 'pelo', 'pela' ou 'pois', objetiva e sem repetir palavrões"
 }
 
-Regras do campo ids_toxicos:
-- Liste TODAS as frases numeradas que contenham xingamento, ofensa, preconceito, ameaça ou conduta punível,
-  inclusive as repetidas (cada repetição é uma frase com número próprio). Em caso de dúvida, INCLUA.
+Definição dos dois níveis:
+- GRAVE: ofensa com conteúdo discriminatório, sexual ou ameaça: racismo, homofobia, xenofobia/preconceito
+  social ("pobre", "favelado"), machismo e xingamento sexual a mulher ("puta", "vagabunda", "piranha"),
+  gordofobia, capacitismo ("PCD", "retardado"), estupro, nazismo, ameaças.
+- COMUM: xingamento genérico sem conteúdo discriminatório ("filha da puta", "bosta", "animal", "idiota",
+  "caralho", "corno").
+- Se a frase tiver uma ofensa grave E uma comum, coloque-a em ids_graves.
+
+Regras das listas:
+- Liste TODAS as frases numeradas com ofensa, inclusive as repetidas (cada repetição tem número próprio).
+  Em caso de dúvida, INCLUA. Cada número aparece em UMA lista só.
 - NÃO inclua comunicação tática ou conversa normal.
 - NÃO inclua frases cuja ÚNICA "ofensa" seja "viado" em uso VOCATIVO, ou "nego"/"negão" em uso coloquial.
-  (Se a mesma frase tiver outra ofensa real, como "idiota" ou "bosta", inclua.)
+  (Se a mesma frase tiver outra ofensa real, como "idiota" ou "bosta", inclua em ids_comuns.)
 - Use apenas números que existem na lista. Nunca invente.
-- Se não houver infração, use [].
+- Se não houver infração, use listas vazias.
 
 Regras do campo motivo:
 - Pode citar termos racistas/preconceituosos entre aspas simples quando necessário (ex.: 'mono').
@@ -264,11 +307,113 @@ def _analisar_segmento(s):
         marcas.append("['negro/negra/negrão'] termo sensível: racismo se usado para ofender/rotular jogador; "
                       "neutro se for só descrição de objeto/tela")
     if PRETO_RX.search(s):
-        marcas.append("['preto'] só é racismo se usado para ofender/rotular pessoa; cor de objeto é neutro")
+        marcas.append("['preto/pretinho'] só é racismo se usado para ofender/rotular pessoa; "
+                      "cor de objeto é neutro")
 
     return marcas, viado, negro
 
 
+def _eh_pesada(s, classe_viado):
+    """Regra em código: a frase (normalizada) contém ofensa GRAVE?"""
+    if LEXICO_GRAVE.search(s):
+        return True
+    if classe_viado in ("ATAQUE", "AMBÍGUO"):
+        return True
+    limpo = LIMPAR_COMUNS.sub(" ", s)
+    if LEXICO_PESADO.search(limpo):
+        return True
+    if PEJORATIVO_RX.search(s) and (PRETO_RX.search(s) or NEGRO_RX.search(s) or NEGAO_RX.search(s)):
+        return True
+    return False
+
+
+def _info_segmento(s, classe_viado):
+    """(pontuação de peso, categorias) usados para priorizar quando é preciso cortar."""
+    limpo = LIMPAR_COMUNS.sub(" ", s)
+    if classe_viado == "VOCATIVO":
+        limpo = VIADO_RX.sub(" ", limpo)
+    cats = {nome for nome, rx in CATEGORIAS.items() if rx.search(limpo)}
+    score = 3 if (LEXICO_TOP.search(limpo) or (PRETO_RX.search(s) and PEJORATIVO_RX.search(s))) else 2
+    return score, cats
+
+
+# ---------------------------------------------------------------------------
+# Montagem da "Toxicidade extraída" (graves primeiro, sem redundância)
+# ---------------------------------------------------------------------------
+def _deduplicar(segmentos, ids):
+    """Agrupa frases idênticas: devolve lista de (primeiro_id, quantidade) em ordem."""
+    grupos, ordem = {}, []
+    for i in sorted(ids):
+        chave = re.sub(r"\W+", " ", _norm(segmentos[i - 1])).strip()
+        if chave in grupos:
+            grupos[chave][1] += 1
+        else:
+            grupos[chave] = [i, 1]
+            ordem.append(chave)
+    return [(grupos[c][0], grupos[c][1]) for c in ordem]
+
+
+def _escolher_graves(grupos, info, maximo):
+    """Se houver graves demais, escolhe cobrindo todas as categorias e priorizando as mais pesadas."""
+    if len(grupos) <= maximo:
+        return grupos
+    ordenados = sorted(grupos, key=lambda g: (-info[g[0]][0], g[0]))
+    cont, escolhidos = {}, []
+    for g in ordenados:                                   # 1ª passada: até 2 frases por categoria
+        cats = info[g[0]][1] or {"outros"}
+        if any(cont.get(c, 0) < 2 for c in cats):
+            escolhidos.append(g)
+            for c in cats:
+                cont[c] = cont.get(c, 0) + 1
+    escolhidos = escolhidos[:maximo]
+    for g in ordenados:                                   # 2ª passada: completa até o limite
+        if len(escolhidos) >= maximo:
+            break
+        if g not in escolhidos:
+            escolhidos.append(g)
+    return sorted(escolhidos)
+
+
+def _formatar_grupo(segmentos, idx, n):
+    texto = segmentos[idx - 1].replace('"', "'")
+    if n > 1:
+        texto = texto.rstrip(".!?… ") + f" (x{n})"
+    return texto
+
+
+def _montar_extracao(segmentos, ids_graves, ids_comuns, info):
+    """Devolve (texto_extraido, nota_resumo)."""
+    ids_comuns = ids_comuns - ids_graves
+    omitidas_comuns = omitidas_graves = 0
+
+    if ids_graves:
+        grupos = _deduplicar(segmentos, ids_graves)
+        escolhidos = _escolher_graves(grupos, info, MAX_GRAVES)
+        omitidas_graves = sum(n for idx, n in grupos if (idx, n) not in escolhidos)
+        omitidas_comuns = len(ids_comuns)
+    elif ids_comuns:
+        grupos = _deduplicar(segmentos, ids_comuns)
+        escolhidos = grupos[:MAX_COMUNS]
+        omitidas_comuns = sum(n for idx, n in grupos[MAX_COMUNS:])
+    else:
+        return "NENHUMA", ""
+
+    texto = '"' + " - ".join(_formatar_grupo(segmentos, idx, n) for idx, n in escolhidos) + '"'
+
+    partes = []
+    if omitidas_comuns:
+        partes.append(f"{omitidas_comuns} frase(s) de toxicidade comum omitida(s) da extração por redundância")
+    if omitidas_graves:
+        partes.append(f"{omitidas_graves} frase(s) grave(s) similar(es) omitida(s) por limite de tamanho")
+    nota = ""
+    if partes:
+        nota = "\n\n*ℹ️ " + "; ".join(partes) + ". A transcrição completa está em “Contexto integral do caso”.*"
+    return texto, nota
+
+
+# ---------------------------------------------------------------------------
+# Chamada ao modelo
+# ---------------------------------------------------------------------------
 def _extrair_json(conteudo):
     conteudo = (conteudo or "").strip()
     try:
@@ -340,6 +485,19 @@ def _chamar_modelo(groq_client, mensagens, tentativas=None):
 
     raise RuntimeError(f"Falha ao obter laudo do modelo após {len(configs)} tentativas: {ultimo_erro}")
 
+
+def _ler_ids(valor, total):
+    ids = set()
+    for x in valor or []:
+        try:
+            n = int(x)
+            if 1 <= n <= total:
+                ids.add(n)
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
 # ---------------------------------------------------------------------------
 # Função principal (mesma assinatura de antes)
 # ---------------------------------------------------------------------------
@@ -399,50 +557,24 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
         [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
     )
 
-    # --- IDs devolvidos pelo modelo (validados) ---
-    ids = set()
-    for x in dados.get("ids_toxicos", []) or []:
-        try:
-            n = int(x)
-            if 1 <= n <= len(segmentos):
-                ids.add(n)
-        except (TypeError, ValueError):
-            continue
+    # --- Listas devolvidas pelo modelo (validadas) ---
+    total = len(segmentos)
+    ids_graves = _ler_ids(dados.get("ids_graves"), total)
+    ids_comuns = _ler_ids(dados.get("ids_comuns"), total)
+    if not ids_graves and not ids_comuns:                  # compatibilidade com formato antigo
+        ids_comuns = _ler_ids(dados.get("ids_toxicos"), total)
 
-    # --- Rede de segurança (respeita o contexto: viado vocativo NÃO entra) ---
-    hits_graves = {
-        i for i, s in normalizados.items()
-        if LEXICO_GRAVE.search(s) or classe_viado[i] in ("ATAQUE", "AMBÍGUO")
-    }
-    hits_insulto = {i for i, s in normalizados.items() if LEXICO_INSULTO.search(s)}
+    # --- Rede de segurança em código (respeita o contexto: viado vocativo NÃO entra) ---
+    hits_graves = {i for i, s in normalizados.items() if _eh_pesada(s, classe_viado[i])}
+    hits_comuns = {i for i, s in normalizados.items() if LEXICO_INSULTO.search(s)}
 
     aviso_extra = ""
     if punicao == "SEM PUNIÇÃO":
-        if hits_graves or hits_insulto or negro_sensivel:
+        if hits_graves or hits_comuns or negro_sensivel:
             aviso_extra = (
                 " **⚠️ AVISO AO ANALISTA:** foram detectados termos possivelmente ofensivos no texto. "
                 "Revise manualmente o contexto antes de concluir."
             )
     else:
-        ids |= hits_graves | hits_insulto
-
-    # --- Toxicidade extraída: literal, em UM par de aspas, separada por " - " ---
-    if ids:
-        trechos = [segmentos[i - 1].replace('"', "'") for i in sorted(ids)]
-        toxicidade = '"' + " - ".join(trechos) + '"'
-    else:
-        toxicidade = "NENHUMA"
-
-    # --- Veredito ---
-    motivo = str(dados.get("motivo", "")).strip() or "conforme as regras internas."
-    veredito = f"Recomendo **{punicao}** {motivo}{aviso_extra}"
-
-    # --- Aviso obrigatório da palavra "escuro" (determinístico) ---
-    if contagens["escuro"] > 0 and punicao != "BAN":
-        veredito += (
-            ' **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. '
-            "Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno). "
-            "Caso tenha sido ofensa racista, altere para BAN."
-        )
-
-    return f"{toxicidade}\n---\n{veredito}"
+        ids_graves |= hits_graves
+        ids_comuns |=

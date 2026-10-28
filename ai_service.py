@@ -577,4 +577,25 @@ def analisar_com_groq(groq_client, dados_csv, texto_usuario, eh_assinante, tipo_
             )
     else:
         ids_graves |= hits_graves
-        ids_comuns |=
+        ids_comuns |= hits_comuns
+
+    # --- Peso/categoria de cada frase (para priorizar na extração) ---
+    info = {i: _info_segmento(normalizados[i], classe_viado[i]) for i in range(1, total + 1)}
+
+    # --- Toxicidade extraída: literal, em UM par de aspas, graves primeiro ---
+    toxicidade, nota_resumo = _montar_extracao(segmentos, ids_graves, ids_comuns, info)
+
+    # --- Veredito ---
+    motivo = str(dados.get("motivo", "")).strip() or "conforme as regras internas."
+    veredito = f"Recomendo **{punicao}** {motivo}{aviso_extra}"
+
+    # --- Aviso obrigatório da palavra "escuro" (determinístico) ---
+    if contagens["escuro"] > 0 and punicao != "BAN":
+        veredito += (
+            ' **⚠️ AVISO AO ANALISTA:** A palavra "escuro" foi identificada na transcrição. '
+            "Verifique se a partida ocorreu em um mapa com essa posição (Dust 2, Ancient ou Inferno). "
+            "Caso tenha sido ofensa racista, altere para BAN."
+        )
+
+    veredito += nota_resumo
+    return f"{toxicidade}\n---\n{veredito}"

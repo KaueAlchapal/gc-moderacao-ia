@@ -132,6 +132,13 @@ with col_entrada:
             with st.form("form_audio", clear_on_submit=False):
                 arquivo_audio = st.file_uploader("🎧 Selecione o áudio (.wav, .mp3)", type=["wav", "mp3", "m4a", "ogg"], key=f"audio_uploader_{st.session_state.uploader_key}")
 
+                chat_complementar = st.text_area(
+                    "💬 Chat/log complementar do mesmo jogador (opcional):",
+                    height=100,
+                    key=f"chat_comp_{st.session_state.uploader_key}",
+                    help="Se o jogador também ofendeu no chat, cole aqui. O Zeus analisa áudio e chat juntos."
+                )
+
                 c3, c4 = st.columns(2)
                 with c3:
                     status_assinante_audio = st.toggle("⭐ Jogador é assinante?", key="ass_a")
@@ -152,16 +159,20 @@ with col_entrada:
                         with st.spinner("1/2 ⚡ Transcrevendo áudio em alta velocidade..."):
                             texto_transcrito = audio_service.transcrever_audio(groq_client_audio, arquivo_audio)
 
+                        texto_completo = texto_transcrito.strip()
+                        if chat_complementar.strip():
+                            texto_completo = (texto_completo + "\n" + chat_complementar.strip()).strip()
+
                         with st.spinner("2/2 🧠 Aplicando regras corporativas..."):
-                            if not texto_transcrito.strip():
+                            if not texto_completo:
                                 st.session_state.ultimo_texto = ""
                                 st.session_state.ultima_recomendacao = "⚠️ A transcrição falhou ou não identificou voz inteligível no áudio."
                             else:
                                 texto_recomendacao = ai_service.analisar_com_groq(
-                                    groq_client_texto, df_casos, texto_transcrito, status_assinante_audio, tipo_partida_audio
+                                    groq_client_texto, df_casos, texto_completo, status_assinante_audio, tipo_partida_audio
                                 )
 
-                                st.session_state.ultimo_texto = texto_transcrito
+                                st.session_state.ultimo_texto = texto_completo
                                 st.session_state.ultima_recomendacao = texto_recomendacao
 
                             st.session_state.arquivo_audio_atual = arquivo_audio
@@ -173,7 +184,13 @@ with col_entrada:
                         st.error(f"Erro fatal ao processar áudio: {e}")
 
     toxicidade_extraida = ""
+    detalhes_md = ""
     recomendacao_bruta = st.session_state.ultima_recomendacao if st.session_state.ultima_recomendacao else ""
+
+    if "===DETALHES===" in recomendacao_bruta:
+        recomendacao_bruta, detalhes_md = recomendacao_bruta.split("===DETALHES===", 1)
+        detalhes_md = detalhes_md.strip()
+
     veredito_final = recomendacao_bruta.strip()
 
     if not veredito_final and st.session_state.analise_concluida:
@@ -205,6 +222,11 @@ with col_saida:
                 st.warning(veredito_final)
             else:
                 st.success(veredito_final)
+
+                if detalhes_md:
+                    with st.expander("🔎 Todas as ofensas detectadas (conferência)"):
+                        st.caption("✅ = está na Toxicidade Extraída · ➖ = detectada, mas fora do campo (para não ficar longo)")
+                        st.markdown(detalhes_md)
 
                 st.markdown("**Contexto integral do caso:**")
                 st.text_area(

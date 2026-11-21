@@ -1,0 +1,39 @@
+name: manter-app-acordado
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  acordar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+
+      - name: Visitar o app
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          python - <<'EOF'
+          import os
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as p:
+              b = p.chromium.launch()
+              pg = b.new_page()
+              pg.goto(os.environ["APP_URL"], timeout=60000)
+              pg.wait_for_timeout(15000)
+              botao = pg.get_by_role("button", name="get this app back up")
+              if botao.count():
+                  botao.first.click()
+                  print("Botão de acordar clicado")
+                  pg.wait_for_timeout(30000)
+              print("Título:", pg.title())
+              b.close()
+          EOF
